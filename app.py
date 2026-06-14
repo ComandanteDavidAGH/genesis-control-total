@@ -3,7 +3,7 @@ import streamlit as st
 # Configuración de página de alta definición
 st.set_page_config(page_title="GÉNESIS v2.5", layout="wide", page_icon="⚙️")
 
-# Inyección de Estilo para el Menú Lateral
+# Inyección de Estilo para el Menú Lateral Militar Oscuro
 st.markdown("""
     <style>
     [data-testid="stSidebar"] { background-color: #0d1b2a; }
@@ -13,7 +13,6 @@ st.markdown("""
 
 # Menú Lateral Institucional
 with st.sidebar:
-    st.image("https://raw.githubusercontent.com/ComandanteDavidAGH/genesis-control-total/main/logo_genesis.png", width=200) # Opcional: sube tu logo después
     st.title("🛡️ Panel de Mando")
     seleccion = st.radio("SELECCIONE EL MÓDULO:", [
         "0. Gestión de Estudiantes",
@@ -23,10 +22,16 @@ with st.sidebar:
         "4. Dashboard Analítico"
     ])
 
-# Enrutador de Módulos
-if seleccion == "1. Creador de Pruebas":
+# Enrutador Inteligente del Búnker
+if seleccion == "0. Gestión de Estudiantes":
+    from modulos import m0_gestion
+    m0_gestion.ejecutar()
+elif seleccion == "1. Creador de Pruebas":
     from modulos import m1_creador
     m1_creador.ejecutar()
+elif seleccion == "4. Dashboard Analítico":
+    from modulos import m4_dashboard
+    m4_dashboard.ejecutar()
 else:
     st.title(seleccion)
-    st.info("Módulo en proceso de carga táctica...")
+    st.info("Módulo en proceso de optimización óptica...")
