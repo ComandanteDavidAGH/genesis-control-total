@@ -60,7 +60,6 @@ def ejecutar():
             res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
             pruebas = res_pruebas.data
             
-            # Descarga de alumnos optimizada en ráfagas de 1000
             estudiantes_base = []
             offset, chunk_size = 0, 1000
             while True:
@@ -77,23 +76,23 @@ def ejecutar():
         st.info("📭 No hay evaluaciones registradas en el sistema.")
         return
 
+    # 📡 INDICADOR DE TELEMETRÍA (Nos dirá cuántas filas reales lee de Supabase)
+    st.caption(f"📊 Telemetría del Sistema: {len(pruebas)} registros detectados en la tabla pruebas_maestras.")
+
     # =================================================================
-    # 🎯 FIX MAESTRO: EXTRACCIÓN INMUNE A MAYÚSCULAS/MINÚSCULAS
+    # 🎯 TRUCO MAESTRO: ASIGNACIÓN FORZADA DE ID AL FRENTE
     # =================================================================
     diccionario_pruebas = {}
     for idx, p in enumerate(pruebas):
-        nombre_raw = str(buscar_campo(p, 'nombre', 'EXAMEN SIN NOMBRE')).strip().upper()
+        # Buscamos el ID real de la fila de forma segura
+        id_real = buscar_campo(p, 'id_prueba', buscar_campo(p, 'id', idx))
+        
+        nombre_raw = str(buscar_campo(p, 'nombre', 'EXAMEN')).strip().upper()
         materia_raw = str(buscar_campo(p, 'materia', 'MATERIA')).strip().upper()
         grado_raw = str(buscar_campo(p, 'grado', 'GENERAL')).strip().upper()
         
-        # Formato de etiqueta limpio y homogéneo para el selector
-        etiqueta_selector = f"{nombre_raw} - {materia_raw} ({grado_raw})"
-        
-        # Rompe colisiones duplicadas inyectando el ID real de la fila
-        if etiqueta_selector in diccionario_pruebas:
-            id_seguro = p.get('id_prueba', p.get('id', idx))
-            etiqueta_selector = f"{etiqueta_selector} (ID: {id_seguro})"
-            
+        # Insertar el ID al inicio rompe cualquier duplicación en los nombres
+        etiqueta_selector = f"[{id_real}] {nombre_raw} - {materia_raw} ({grado_raw})"
         diccionario_pruebas[etiqueta_selector] = p
 
     # Despliegue del formulario en contenedores limpios
@@ -104,7 +103,6 @@ def ejecutar():
             prueba_sel = st.selectbox("🎯 EVALUACIÓN CORRESPONDIENTE:", list(diccionario_pruebas.keys()))
             datos_prueba = diccionario_pruebas[prueba_sel]
             
-            # Límites numéricos blindados con el nuevo sensor
             raw_max_preguntas = buscar_campo(datos_prueba, 'total_preguntas', 10)
             try:
                 max_preguntas = int(raw_max_preguntas)
@@ -120,7 +118,6 @@ def ejecutar():
         with c2:
             grado_objetivo_prueba = str(buscar_campo(datos_prueba, 'grado', 'GENERAL')).strip().upper()
             
-            # Filtrado inteligente de estudiantes utilizando el sensor inmune
             if estudiantes_base:
                 lista_alumnos = []
                 for est in estudiantes_base:
@@ -131,7 +128,6 @@ def ejecutar():
                         if nom_alumno:
                             lista_alumnos.append(nom_alumno)
                 
-                # Paracaídas si no hay alumnos en ese grado específico
                 if not lista_alumnos:
                     lista_alumnos = sorted(list(set([str(buscar_campo(e, 'nombre_completo')).strip().upper() for e in estudiantes_base if buscar_campo(e, 'nombre_completo')])))
                 else:
