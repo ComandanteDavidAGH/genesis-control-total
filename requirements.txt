@@ -3,3 +3,6 @@ supabase
 pandas
 numpy
 opencv-python-headless
+plotly
+fpdf2
+openpyxl
