@@ -13,7 +13,7 @@ def iniciar_conexion():
     return create_client(url, key)
 
 def ejecutar():
-    # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN) - Respetada al 100%
+    # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN)
     st.markdown("""
         <style>
         .titulo-dash { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
@@ -54,7 +54,7 @@ def ejecutar():
         st.info("📭 No se registran evaluaciones maestras en el banco de datos para analizar.")
         return
 
-    # 🎛️ SELECTOR GENERAL DE PRUEBAS - Estructura original intacta
+    # 🎛️ SELECTOR GENERAL DE PRUEBAS
     diccionario_pruebas = {f"{p['nombre']} - {p['materia']}".strip().upper(): p for p in pruebas}
     prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN MÁSTER PARA AUDITAR:", list(diccionario_pruebas.keys()))
 
@@ -65,7 +65,6 @@ def ejecutar():
     df_notas = pd.DataFrame(notas_raw) if notas_raw else pd.DataFrame()
     
     if not df_notas.empty:
-        # Asegurar compatibilidad de columnas en minúsculas
         df_notas.columns = [c.lower() for c in df_notas.columns]
         df_notas = df_notas[df_notas['id_prueba'] == id_prueba_activa]
 
@@ -80,7 +79,6 @@ def ejecutar():
         for _, fila in df_notas.iterrows():
             estudiante_str = str(fila.get('estudiante', 'ALUMNO ANÓNIMO'))
             
-            # Algoritmo de extracción para separar "Nombre Alumno" and "Curso"
             nombre_final = estudiante_str
             curso_final = "SIN CURSO"
             if "(" in estudiante_str and ")" in estudiante_str:
@@ -88,17 +86,16 @@ def ejecutar():
                 nombre_final = parts[0].strip()
                 curso_final = parts[1].replace(")", "").strip()
 
-            # 🛡️ PARACAÍDAS ANTI-NULL EN FILAS (Evita que el bucle falle con datos vacíos antiguos)
+            # 🛡️ FILTRADO ULTRA-DEFENSIVO DE FILAS HISTÓRICAS
             raw_pct = fila.get('porcentaje')
-            pct = float(raw_pct) if raw_pct is not None else 0.0
+            pct = float(raw_pct) if raw_pct is not None and str(raw_pct).strip().lower() not in ['none', 'null', ''] else 0.0
 
             raw_nota = fila.get('puntaje_obtenido')
-            nota = float(raw_nota) if raw_nota is not None else 0.0
+            nota = float(raw_nota) if raw_nota is not None and str(raw_nota).strip().lower() not in ['none', 'null', ''] else 0.0
 
             raw_max_p = fila.get('puntaje_maximo')
-            max_p = float(raw_max_p) if raw_max_p is not None else 5.0
+            max_p = float(raw_max_p) if raw_max_p is not None and str(raw_max_p).strip().lower() not in ['none', 'null', ''] else 5.0
             
-            # Clasificación de rangos oficiales ZipGrade/Institucionales
             if pct < 60.0:
                 nivel = "Bajo (<60%)"
                 estado = "REPROBADO ❌"
@@ -129,19 +126,31 @@ def ejecutar():
         df_informe_limpio = pd.DataFrame(filas_limpias).sort_values(by="ESTUDIANTE MATRÍCULA")
 
     # =================================================================
-    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE (UX SIMÉTRICA ORIGINAL)
+    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE
     # =================================================================
     c1, c2 = st.columns([1, 1.2])
     
     with c1:
         st.markdown("### 📝 Detalles de Operación")
         
-        # 🛡️ FIJACIÓN PREVENTIVA DE VISUALIZACIÓN MÁSTER (Soluciona el 'None Pts')
+        # 🛡️ DETECTOR ABSOLUTO ANTI-CADENAS VACÍAS
         raw_max_activa = datos_prueba_activa.get('puntaje_maximo')
-        max_p_display = float(raw_max_activa) if raw_max_activa is not None else 5.0
+        if raw_max_activa is None or str(raw_max_activa).strip().lower() in ['none', 'null', '']:
+            max_p_display = 5.0
+        else:
+            try:
+                max_p_display = float(raw_max_activa)
+            except Exception:
+                max_p_display = 5.0
 
         raw_items_activa = datos_prueba_activa.get('total_preguntas')
-        items_display = int(raw_items_activa) if raw_items_activa is not None else 10
+        if raw_items_activa is None or str(raw_items_activa).strip().lower() in ['none', 'null', '']:
+            items_display = 10
+        else:
+            try:
+                items_display = int(raw_items_activa)
+            except Exception:
+                items_display = 10
 
         tabla_detalles = pd.DataFrame({
             "Especificación": ["Examen Activo", "Asignatura", "Preguntas Totales", "Puntaje Máximo", "Último Escaneo"],
@@ -149,13 +158,13 @@ def ejecutar():
                 str(datos_prueba_activa.get("nombre")).upper(),
                 str(datos_prueba_activa.get("materia")).upper(),
                 f"{items_display} Ítems",
-                f"{max_p_display:.1f} Pts", # 🟢 ¡Corregido! Muestra el número limpio en lugar de None
+                f"{max_p_display:.1f} Pts", 
                 "2026-06-15"
             ]
         })
         st.dataframe(tabla_detalles, use_container_width=True, hide_index=True)
         
-        # 📊 SECCIÓN DE DESCARGAS ANALÍTICAS
+        # 📊 SECCIÓN DE DESCARGAS
         st.markdown("### 📥 Descargar Reportes Masivos:")
         
         if not df_informe_limpio.empty:
