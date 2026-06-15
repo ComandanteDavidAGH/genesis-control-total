@@ -118,19 +118,17 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
 # 🖥️ SECCIÓN DE LA INTERFAZ DE USUARIO
 # =================================================================
 def ejecutar():
+    # 🎨 PURIFICACIÓN DE CSS: Orientado con precisión para no alterar el menú izquierdo
     st.markdown("""
     <style>
     .titulo-dashboard { color: #0d1b2a; border-bottom: 3px solid #d4af37; padding-bottom: 5px; font-family: 'Arial Black'; }
     .sub-seccion { color: #1b263b; font-family: 'Arial'; margin-top: 25px; border-left: 4px solid #d4af37; padding-left: 10px; }
     
-    /* FIX DE CONTRASTE: Eliminamos la palidez de textos, calendarios y selectores superiores */
-    button[data-baseweb="tab"] p, div[data-testid="stSelectbox"] label p, div[data-testid="stRadio"] p, label[data-testid="stMetricLabel"] p {
+    /* Filtrado quirúrgico: Afecta solo los componentes internos de este módulo principal */
+    button[data-baseweb="tab"] p, div[data-testid="stSelectbox"] label p {
         color: #0d1b2a !important; font-weight: 800 !important; text-transform: uppercase; font-size: 13px !important;
     }
-    div[data-testid="stDateInput"] label p {
-        color: #0d1b2a !important; font-weight: 800 !important; text-transform: uppercase; font-size: 13px !important;
-    }
-    div[data-baseweb="select"], div[data-testid="stRadio"] label, div[data-testid="stDateInput"] input {
+    div[data-baseweb="select"], div[data-testid="stDateInput"] input {
         color: #0d1b2a !important; font-weight: bold !important;
     }
     </style>
@@ -187,12 +185,17 @@ def ejecutar():
 
             opciones_pruebas = {f"{p['nombre']} - {p['materia']}".strip(): p for p in datos_pruebas}
             
-            # 🌟 MEJORA UX 1: Estructura en columnas con selector de cuestionario y Filtro de Fecha por Calendario
+            # 🌟 SOLUCIÓN AL TYPEERROR: Estructura robusta de dos columnas con activación por check
             c_sel1, c_sel2 = st.columns(2)
             with c_sel1:
                 prueba_seleccionada = st.selectbox("🎯 Seleccione el cuestionario que desea inspeccionar en detalle:", list(opciones_pruebas.keys()))
             with c_sel2:
-                filtro_fecha = st.date_input("📅 Filtrar por Fecha (Calendario Interactiva):", value=None, placeholder="Haga clic para abrir el calendario...")
+                # El check activa el calendario de manera limpia y sin conflictos de compatibilidad
+                activar_calendario = st.checkbox("🔍 ¿Filtrar resultados por un día específico?")
+                if activar_calendario:
+                    filtro_fecha = st.date_input("📅 Seleccione la fecha en el almanaque:")
+                else:
+                    filtro_fecha = None
             
             datos_prueba_maestra = opciones_pruebas[prueba_seleccionada]
             id_prueba_target = datos_prueba_maestra.get("id", datos_prueba_maestra.get("id_prueba"))
@@ -204,7 +207,6 @@ def ejecutar():
                 df_respuestas_base['fecha_formateada'] = pd.to_datetime(df_respuestas_base['created_at']).dt.strftime('%Y-%m-%d')
                 df_filtrado = df_respuestas_base[df_respuestas_base['id_prueba'] == id_prueba_target].copy()
                 
-                # Aplicamos el filtro del calendario dinámicamente si el usuario selecciona una fecha
                 if filtro_fecha:
                     fecha_busqueda = filtro_fecha.strftime('%Y-%m-%d')
                     df_filtrado = df_filtrado[df_filtrado['fecha_formateada'] == fecha_busqueda].copy()
@@ -405,7 +407,6 @@ def ejecutar():
         with col1:
             periodo_seleccionado = st.selectbox("📅 SELECCIONE EL PERÍODO ACADÉMICO:", ["Primer Periodo", "Segundo Periodo", "Tercer Periodo", "Cuarto Periodo"])
         with col2:
-            # 🌟 MEJORA UX 2: Extraemos los cursos directamente para armar una lista desplegable perfecta
             cursos_detectados = []
             if datos_estudiantes:
                 for est in datos_estudiantes:
@@ -414,7 +415,6 @@ def ejecutar():
                     if gr:
                         cursos_detectados.append(f"{gr}{gp}".strip())
             
-            # Lista definitiva libre de text_input manuales para image_91eec4.png
             cursos_finales = sorted(list(set(cursos_detectados))) if cursos_detectados else ["6A", "6B", "7A", "7B", "8A", "8B", "9A", "9B", "10A", "10B", "11A", "11B"]
             curso_seleccionado = st.selectbox("🏫 SELECCIONE EL CURSO / GRADO DESTINO:", cursos_finales)
             
