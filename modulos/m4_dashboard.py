@@ -1,177 +1,198 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+import io
 from supabase import create_client, Client
 
 # =================================================================
-# 🔒 CONEXIÓN SEGURA CON EL BÚNKER DE PRODUCCIÓN
+# 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
-    # Ajuste pertinente de seguridad y alta disponibilidad realizado hoy
     key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
 def ejecutar():
-    # 🎨 INYECCIÓN DE ALTA INGENIERÍA VISUAL (GÉNESIS ANALYTICS HUD) - IMPECABLE
+    # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN)
     st.markdown("""
         <style>
-        .titulo-genesis {
-            color: #0d1b2a;
-            font-family: 'Arial Black', sans-serif;
-            font-size: 32px;
-            margin-bottom: 0px;
-        }
-        .subtitulo-genesis {
-            color: #d4af37;
-            font-weight: bold;
-            font-size: 13px;
-            margin-top: -5px;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-        }
+        .titulo-dash { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
+        .subtitulo-dash { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
         
-        .hud-container {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
-            margin-top: 15px;
+        div[data-testid="stMainBlockContainer"] div[data-testid="stSelectbox"] label p {
+            color: #0d1b2a !important; font-weight: 800 !important; font-size: 13px !important; text-transform: uppercase;
         }
-        .hud-card {
-            flex: 1;
-            background: #ffffff;
-            border-top: 3px solid #0d1b2a;
-            border-radius: 4px 4px 12px 12px;
-            padding: 12px 15px;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(13, 27, 42, 0.04);
-            transition: all 0.2s ease;
-        }
-        .hud-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(212, 175, 55, 0.12);
-        }
-        .hud-label {
-            font-size: 11px;
-            font-weight: 800;
-            color: #5c677d;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 4px;
-        }
-        .hud-value {
-            font-size: 32px;
-            font-family: 'Arial Black', sans-serif;
-            font-weight: 900;
-            line-height: 1;
-            color: #0d1b2a;
-        }
-        
-        .contenedor-matriz {
-            background-color: #ffffff;
-            border-radius: 12px;
-            border: 1px solid #e5e5e5;
-            border-top: 4px solid #0d1b2a;
-            padding: 20px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.02);
-            margin-top: 20px;
+        div[data-testid="stMainBlockContainer"] div[data-baseweb="select"] {
+            color: #0d1b2a !important; font-weight: bold !important;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<p class='titulo-genesis'>📊 Panel del Cuestionario y Analítica</p>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitulo-genesis'>Ecosistema Centralizado de Control de Evaluaciones e Inteligencia Académica</p>", unsafe_allow_html=True)
+    st.markdown("<p class='titulo-dash'>📊 Dashboard Analítico e Informes</p>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitulo-dash'>Consola Central de Rendimiento y Exportación de Matrices de Calificación</p>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # Pestañas institucionales limpias - Tu diseño original
-    tab1, tab2 = st.tabs(["📊 Analítica General", "📂 Consolidación por Período (Migrar)"])
+    try:
+        supabase = iniciar_conexion()
+    except Exception:
+        st.error("⚠️ Falla de enlace con la base de datos central.")
+        return
 
-    with tab1:
+    # 📥 DESCARGA DE COMPONENTES CRIPTOGRÁFICOS
+    with st.spinner("Sincronizando registros analíticos..."):
         try:
-            supabase = iniciar_conexion()
+            res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
+            pruebas = res_pruebas.data
             
-            # =================================================================
-            # 🛰️ EXTRACTOR EN RÁFAGAS CORREGIDO (Apuntando a data_estudiantes)
-            # =================================================================
-            estudiantes_base = []
-            offset = 0
-            chunk_size = 1000  
-            
-            with st.spinner("Compilando telemetría analítica..."):
-                while True:
-                    resultado = supabase.table("data_estudiantes")\
-                        .select('ID_Estudiante, Nombre_Completo, Grado, Grupo')\
-                        .order('ID_Estudiante')\
-                        .range(offset, offset + chunk_size - 1)\
-                        .execute()
-                    
-                    if not resultado.data:
-                        break
-                        
-                    estudiantes_base.extend(resultado.data)
-                    
-                    if len(resultado.data) < chunk_size:
-                        break
-                        
-                    offset += chunk_size  
-            
-            # =================================================================
-            # 📡 CONEXIÓN DINÁMICA DE TARJETAS (Lectura del búnker en tiempo real)
-            # =================================================================
-            evaluaciones_procesadas = 0
-            efectividad_institucional = "100%"
-            
-            try:
-                res_notas = supabase.table("respuestas_estudiantes").select("porcentaje").execute()
-                if res_notas.data:
-                    evaluaciones_procesadas = len(res_notas.data)
-                    df_notas = pd.DataFrame(res_notas.data)
-                    df_notas['porcentaje'] = pd.to_numeric(df_notas['porcentaje'], errors='coerce').fillna(0)
-                    if evaluaciones_procesadas > 0:
-                        aprobados = len(df_notas[df_notas['porcentaje'] >= 60.0])
-                        efectividad_institucional = f"{(aprobados / evaluaciones_procesadas) * 100:.0f}%"
-            except Exception:
-                pass
-                        
+            res_notas = supabase.table("respuestas_estudiantes").select("*").execute()
+            notas_raw = res_notas.data
         except Exception as e:
-            st.error(f"🚨 Error en la sincronización de tablas: {e}")
+            st.error(f"Error de lectura en el búnker: {e}")
             return
 
-        if estudiantes_base:
-            df_unicos = pd.DataFrame(estudiantes_base).drop_duplicates(subset=["ID_Estudiante"])
-            total_alumnos = len(df_unicos)
+    if not pruebas:
+        st.info("📭 No se registran evaluaciones maestras en el banco de datos para analizar.")
+        return
 
-            # HUD de Control Analítico Superior - Tu diseño con datos reales inyectados
-            st.markdown(f"""
-                <div class="hud-container">
-                    <div class="hud-card" style="border-top-color: #0d1b2a;">
-                        <div class="hud-label">👥 AUDITORÍA DE ALUMNOS</div>
-                        <div class="hud-value" style="color: #0d1b2a;">{total_alumnos}</div>
-                    </div>
-                    <div class="hud-card" style="border-top-color: #d4af37;">
-                        <div class="hud-label" style="color: #bfa12a;">📝 EVALUACIONES PROCESADAS</div>
-                        <div class="hud-value" style="color: #d4af37;">{evaluaciones_procesadas}</div>
-                    </div>
-                    <div class="hud-card" style="border-top-color: #2b9348;">
-                        <div class="hud-label" style="color: #2b9348;">📈 EFECTIVIDAD INSTITUCIONAL</div>
-                        <div class="hud-value" style="color: #2b9348;">{efectividad_institucional}</div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+    # 🎛️ SELECTOR GENERAL DE PRUEBAS
+    diccionario_pruebas = {f"{p['nombre']} - {p['materia']}".strip().upper(): p for p in pruebas}
+    prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN MÁSTER PARA AUDITAR:", list(diccionario_pruebas.keys()))
 
-            # Cápsula de despliegue informativo - Tuya al 100%
-            st.markdown("""
-                <div class="contenedor-matriz">
-                    <h4 style="color: #0d1b2a; font-weight: bold; margin-top: 0px; margin-bottom: 10px;">📊 Distribución del Rendimiento de Matrícula</h4>
-                    <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Métricas consolidadas listas para el procesamiento de promedios por asignaturas.</p>
-                </div>
-            """, unsafe_allow_html=True)
+    # Filtrado dinámico de calificaciones
+    datos_prueba_activa = diccionario_pruebas[prueba_sel]
+    id_prueba_activa = datos_prueba_activa.get("id", datos_prueba_activa.get("id_prueba"))
+    
+    df_notas = pd.DataFrame(notas_raw) if notas_raw else pd.DataFrame()
+    
+    if not df_notas.empty:
+        # Asegurar compatibilidad de columnas en minúsculas
+        df_notas.columns = [c.lower() for c in df_notas.columns]
+        df_notas = df_notas[df_notas['id_prueba'] == id_prueba_activa]
+
+    # =================================================================
+    # 🗃️ PROCESAMIENTO Y LIMPIEZA DE COLUMNAS PARA EL PUENTE DE NOTAS
+    # =================================================================
+    df_informe_limpio = pd.DataFrame()
+    conteo_niveles = {"Bajo (<60%)": 0, "Básico (60-79%)": 0, "Alto (80-89%)": 0, "Superior (≥90%)": 0}
+
+    if not df_notas.empty:
+        filas_limpias = []
+        for _, fila in df_notas.iterrows():
+            estudiante_str = str(fila.get('estudiante', 'ALUMNO ANÓNIMO'))
             
-            st.info("💡 **Sistema Listo:** Seleccione una evaluación en la central de escáner para comenzar a proyectar las gráficas estadísticas en tiempo real.")
+            # Algoritmo de extracción para separar "Nombre Alumno" y "Curso"
+            nombre_final = estudiante_str
+            curso_final = "SIN CURSO"
+            if "(" in estudiante_str and ")" in estudiante_str:
+                parts = estudiante_str.split("(")
+                nombre_final = parts[0].strip()
+                curso_final = parts[1].replace(")", "").strip()
+
+            pct = float(fila.get('porcentaje', 0.0))
+            nota = float(fila.get('puntaje_obtenido', 0.0))
+            max_p = float(fila.get('puntaje_maximo', 5.0))
+            
+            # Clasificación de rangos oficiales ZipGrade/Institucionales
+            if pct < 60.0:
+                nivel = "Bajo (<60%)"
+                estado = "REPROBADO ❌"
+                conteo_niveles["Bajo (<60%)"] += 1
+            elif 60.0 <= pct < 80.0:
+                nivel = "Básico (60-79%)"
+                estado = "APROBADO ✅"
+                conteo_niveles["Básico (60-79%)"] += 1
+            elif 80.0 <= pct < 90.0:
+                nivel = "Alto (80-89%)"
+                estado = "APROBADO ✅"
+                conteo_niveles["Alto (80-89%)"] += 1
+            else:
+                nivel = "Superior (≥90%)"
+                estado = "APROBADO ✅"
+                conteo_niveles["Superior (≥90%)"] += 1
+
+            filas_limpias.append({
+                "ESTUDIANTE MATRÍCULA": nombre_final.upper(),
+                "CURSO / GRADO": curso_final.upper(),
+                "NOTA LOGRADA": round(nota, 2),
+                "NOTA MÁXIMA": round(max_p, 2),
+                "EFECTIVIDAD %": f"{pct:.1f}%",
+                "RANGO COGNITIVO": nivel,
+                "ESTADO ACADÉMICO": estado
+            })
+        
+        df_informe_limpio = pd.DataFrame(filas_limpias).sort_values(by="ESTUDIANTE MATRÍCULA")
+
+    # =================================================================
+    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE (UX SIMÉTRICA)
+    # =================================================================
+    c1, c2 = st.columns([1, 1.2])
+    
+    with c1:
+        st.markdown("### 📝 Detalles de Operación")
+        tabla_detalles = pd.DataFrame({
+            "Especificación": ["Examen Activo", "Asignatura", "Preguntas Totales", "Puntaje Máximo", "Último Escaneo"],
+            "Detalle": [
+                str(datos_prueba_activa.get("nombre")).upper(),
+                str(datos_prueba_activa.get("materia")).upper(),
+                f"{datos_prueba_activa.get('total_preguntas', 10)} Ítems",
+                f"{datos_prueba_activa.get('puntaje_maximo', 5.0)} Pts",
+                "2026-06-15"
+            ]
+        })
+        st.dataframe(tabla_detalles, use_container_width=True, hide_index=True)
+        
+        # 📊 SECCIÓN DE DESCARGAS ANALÍTICAS (FRENTE A ACTIVADO)
+        st.markdown("### 📥 Descargar Reportes Masivos:")
+        
+        if not df_informe_limpio.empty:
+            # 🟢 ENSAMBLADOR BINARIO PARA EXCEL MASTER
+            buffer_excel = io.BytesIO()
+            with pd.ExcelWriter(buffer_excel, engine='xlsxwriter') as writer:
+                df_informe_limpio.to_excel(writer, sheet_name='Calificaciones', index=False)
+                # Formateo automático de celdas internas de Excel para presentación ejecutiva
+                workbook = writer.book
+                worksheet = writer.sheets['Calificaciones']
+                worksheet.set_column('A:G', 22)
+            
+            # 🔵 ENSAMBLADOR BINARIO PARA CSV UNIVERSAL
+            buffer_csv = df_informe_limpio.to_csv(index=False).encode('utf-8')
+            
+            cx1, cx2, cx3 = st.columns(3)
+            cx1.download_button("🟢 Excel", data=buffer_excel.getvalue(), file_name=f"REPORTE_{datos_prueba_activa['nombre']}.xlsx", mime="application/vnd.ms-excel", use_container_width=True)
+            cx2.download_button("📄 CSV", data=buffer_csv, file_name=f"REPORTE_{datos_prueba_activa['nombre']}.csv", mime="text/csv", use_container_width=True)
+            cx3.button("🚀 Migrar", type="secondary", disabled=True, use_container_width=True, help="Conducto directo API automatizado.")
         else:
-            st.warning("⚠️ No se detectaron registros válidos para estructurar las analíticas.")
+            st.warning("⚠️ Sin datos consolidados para exportar en esta prueba.")
 
-    with tab2:
-        pass
+    with c2:
+        st.markdown("### 📊 Distribución de Puntuaciones")
+        df_grafico = pd.DataFrame({
+            "Nivel": list(conteo_niveles.keys()),
+            "Hojas": list(conteo_niveles.values())
+        })
+        
+        fig = px.bar(
+            df_grafico, x="Nivel", y="Hojas",
+            color="Nivel",
+            color_discrete_map={
+                "Bajo (<60%)": "#ff4b4b",
+                "Básico (60-79%)": "#ffaa00",
+                "Alto (80-89%)": "#38b000",
+                "Superior (≥90%)": "#007200"
+            },
+            text_auto=True,
+            height=320
+        )
+        fig.update_layout(showlegend=False, margin=dict(l=10, r=10, t=10, b=10), xaxis_title=None)
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-if __name__ == "__main__":
-    pass
+    # =================================================================
+    # 📋 SECCIÓN INFERIOR: TABLERO GENERAL DE ASISTENCIA
+    # =================================================================
+    st.markdown("---")
+    st.markdown("### 📋 Control de Asistencia y Sabana Escaneada")
+    
+    if not df_informe_limpio.empty:
+        st.data_editor(df_informe_limpio, use_container_width=True, hide_index=True, disabled=True)
+    else:
+        st.info("💡 Consola Vacía: No se registran exámenes presentados para esta evaluación aún.")
