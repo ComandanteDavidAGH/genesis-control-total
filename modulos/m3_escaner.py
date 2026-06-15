@@ -21,14 +21,10 @@ def procesar_vision_omr(imagen_bytes):
     file_bytes = np.asarray(bytearray(imagen_bytes.read()), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     
-    # Redimensionar a tamaño estándar de análisis
     img_redim = cv2.resize(img, (600, 800))
     gris = cv2.cvtColor(img_redim, cv2.COLOR_BGR2GRAY)
-    
-    # Filtro Gaussiano para eliminar ruido y sombras del papel
     desenfoque = cv2.GaussianBlur(gris, (5, 5), 0)
     
-    # Umbralización Adaptativa (Blanco y Negro Puro)
     binaria = cv2.adaptiveThreshold(
         desenfoque, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
         cv2.THRESH_BINARY_INV, 11, 2
@@ -44,14 +40,11 @@ def ejecutar():
         <style>
         .titulo-escaner { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
         .subtitulo-escaner { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
-        
-        /* Contenedor HUD del Escáner */
         .hud-escaner {
             background: linear-gradient(135deg, #0d1b2a 0%, #1e3a8a 100%);
             padding: 15px; border-radius: 8px; color: white; font-weight: bold;
             box-shadow: 0px 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;
         }
-        
         div[data-testid="stSidebarUserBlock"] p { color: #0d1b2a !important; }
         </style>
     """, unsafe_allow_html=True)
@@ -63,10 +56,9 @@ def ejecutar():
     try:
         supabase = iniciar_conexion()
     except Exception:
-        st.error("🚨 Enlace de comunicaciones roto con el búnker de Supabase.")
+        st.error("🚨 Enlace de communications roto con el búnker de Supabase.")
         return
 
-    # 📥 DESCARGA DE EXÁMENES ACTIVOS DESDE LA BASE DE DATOS
     with st.spinner("Sincronizando banco de pruebas máster..."):
         try:
             res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
@@ -79,10 +71,7 @@ def ejecutar():
         st.info("📭 No hay exámenes registrados en el sistema. Vaya al Módulo 2 para dar de alta una prueba.")
         return
 
-    # =================================================================
-    # 🎛️ PANEL DE CONTROL DE MANDO (SELECCIÓN)
-    # =================================================================
-    diccionario_pruebas = {f"{p['nombre']} - {p['materia']}".upper(): p for p in pruebas}
+    diccionario_pruebas = {f"{p.get('nombre', 'SIN NOMBRE')} - {p.get('materia', 'SIN MATERIA')}".upper(): p for p in pruebas}
     
     with st.container(border=True):
         st.markdown("### 🎯 Configuración del Perímetro de Calificación")
@@ -91,14 +80,22 @@ def ejecutar():
             prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN A CALIFICAR:", list(diccionario_pruebas.keys()))
             datos_examen = diccionario_pruebas[prueba_sel]
         with c2:
-            # Entrada del estudiante alineada con el formato "Nombre (Curso)" del Dashboard
             nombre_alumno = st.text_input("👤 NOMBRE COMPLETO DEL ESTUDIANTE:", placeholder="Ej: JUAN PÉREZ").strip().upper()
             curso_alumno = st.text_input("👥 CURSO / GRADO DEL ALUMNO:", value=str(datos_examen.get('grado', ''))).strip().upper()
 
-    # Procesar clave criptográfica guardada
-    clave_maestra_lista = datos_examen['clave_respuestas'].split(',')
-    total_preguntas = int(datos_examen['total_preguntas'])
-    nota_maxima_posible = float(datos_examen['puntaje_maximo'])
+    # =================================================================
+    # 🛡️ EXTRACCIÓN DEFENSIVA DE COLUMNAS (EVITA KEYERROR)
+    # =================================================================
+    # Buscamos la clave usando múltiples variantes comunes por si acaso
+    clave_cruda = datos_examen.get('clave_respuestas') or datos_examen.get('clave') or datos_examen.get('respuestas') or datos_examen.get('respuestas_correctas')
+    
+    if clave_cruda is None:
+        st.error(f"❌ **Falla de Mapeo en Supabase:** No se detectó ninguna columna de respuestas compatible en tu registro. Columnas encontradas: `{list(datos_examen.keys())}`. Verifica los nombres de tus columnas en la base de datos.")
+        return
+
+    clave_maestra_lista = str(clave_cruda).split(',')
+    total_preguntas = int(datos_examen.get('total_preguntas', len(clave_maestra_lista)))
+    nota_maxima_posible = float(datos_examen.get('puntaje_maximo', 5.0))
 
     # =================================================================
     # 📸 ÁREA DE CAPTURA - CARGA DE ARCHIVOS IMAGEN
@@ -114,12 +111,8 @@ def ejecutar():
             st.markdown("### 👁️ Visor de Inspección Óptica")
             with st.spinner("Ejecutando filtros de visión artificial..."):
                 try:
-                    # Pasar la foto por los algoritmos de OpenCV
                     img_real, img_binaria = procesar_vision_omr(archivo_imagen)
-                    
-                    # Mostrar la imagen en Streamlit convirtiendo de BGR a RGB
                     st.image(cv2.cvtColor(img_real, cv2.COLOR_BGR2RGB), caption="Imagen Capturada por el Satélite", use_container_width=True)
-                    
                     with st.expander("🔬 Ver mapa de contraste (Filtro Binario OpenCV)"):
                         st.image(img_binaria, caption="Matriz de Detección de Carbono", use_container_width=True)
                 except Exception as e:
@@ -133,13 +126,10 @@ def ejecutar():
             opciones_burbuja = ["A", "B", "C", "D", "E", "VACÍA"]
             respuestas_detectadas = []
             
-            # Formación en rejilla compacta de lectura rápida
             grid_respuestas = st.columns(3)
             for i in range(1, total_preguntas + 1):
                 col_grid = grid_respuestas[(i - 1) % 3]
                 with col_grid:
-                    # Simulación inteligente: Por defecto marcamos "A" o la primera opción, 
-                    # emulando la lectura base del sensor. El docente audita visualmente.
                     respuestas_detectadas.append(
                         st.selectbox(f"Pregunta {i:02d}:", opciones_burbuja, index=0, key=f"scan_q_{i}")
                     )
@@ -150,7 +140,7 @@ def ejecutar():
             buenas = 0
             detalles_tabla = []
             
-            for idx in range(total_preguntas):
+            for idx in range(min(total_preguntas, len(clave_maestra_lista))):
                 n_preg = idx + 1
                 resp_alumno = respuestas_detectadas[idx]
                 resp_correcta = clave_maestra_lista[idx]
@@ -168,11 +158,9 @@ def ejecutar():
                     "Resultado": estado_item
                 })
 
-            # Fórmulas de Calificación Estándar
-            porcentaje_efectividad = (buenas / total_preguntas) * 100
-            nota_final = (buenas / total_preguntas) * nota_maxima_posible
+            porcentaje_efectividad = (buenas / total_preguntas) * 100 if total_preguntas > 0 else 0
+            nota_final = (buenas / total_preguntas) * nota_maxima_posible if total_preguntas > 0 else 0
 
-            # Despliegue del HUD Analítico de Calificación
             st.markdown(f"""
                 <div class="hud-escaner">
                     <div style="display: flex; justify-content: space-between; text-align: center;">
@@ -194,7 +182,6 @@ def ejecutar():
                 if not nombre_alumno:
                     st.error("❌ Operación abortada: Es obligatorio introducir el nombre del estudiante para indexar la matrícula.")
                 else:
-                    # Ensamble de identidad única estructurada compatible con el Dashboard
                     cadena_estudiante_completa = f"{nombre_alumno} ({curso_alumno if curso_alumno else 'GENERAL'})"
                     id_prueba_activa = datos_examen.get("id", datos_examen.get("id_prueba"))
 
