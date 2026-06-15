@@ -5,6 +5,13 @@ from supabase import create_client
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
     key = st.secrets["SUPABASE_KEY"].strip()
+    
+    # 🛰️ RADAR DE SEGURIDAD EN VIVO
+    st.info(f"""🔍 **Rastreador de Conexión Activo:**
+* 🛰️ URL apuntada: `{url}`
+* 📏 Longitud de clave: **{len(key)}** caracteres.
+* 🛡️ Inicio: `{key[:8]}...` | Final: `...{key[-8:]}`""")
+    
     return create_client(url, key)
 
 def ejecutar():
@@ -32,9 +39,9 @@ def ejecutar():
         estudiantes_base = []
         offset, chunk_size = 0, 1000
         
-        with st.spinner("Sincronizando base de datos masiva..."):
+        with st.spinner("Sincronizando base de datos masiva con el búnker real..."):
             while True:
-                # Conectamos a la tabla de producción real de 7,772 filas
+                # Volvemos a la tabla de producción real: data_estudiantes
                 resultado = supabase.table("data_estudiantes")\
                     .select('*')\
                     .range(offset, offset + chunk_size - 1).execute()
@@ -44,13 +51,16 @@ def ejecutar():
                 offset += chunk_size
     except Exception as e:
         st.error(f"🚨 Error de enlace masivo: {e}")
+        st.warning("""💡 **Protocolo de Reajuste Obligatorio:** 1. Ve al Supabase del proyecto real (`bwrwkluhzzmrzrsszwac`).
+2. Entra a Settings (⚙️) -> API.
+3. Copia la clave **anon public** (Debe empezar por `eyJhbG...`).
+4. Reemplázala en los Secrets de Streamlit Cloud y dale a Save.""")
         return
 
     if estudiantes_base:
         df = pd.DataFrame(estudiantes_base)
         df.columns = [c.lower() for c in df.columns]
         
-        # Identificamos la columna id de forma segura
         col_id = "id_estudiante" if "id_estudiante" in df.columns else df.columns[0]
         df_unicos = df.drop_duplicates(subset=[col_id])
         total_matricula = len(df_unicos)
@@ -79,7 +89,7 @@ def ejecutar():
         """, unsafe_allow_html=True)
 
         st.markdown('<div class="contenedor-matriz">', unsafe_allow_html=True)
-        st.markdown("<h4 style='color: #0d1b2a; font-weight: bold; margin-top: 0px; margin-bottom: 15px;'>MATRIZ OFICIAL DE ESTUDIANTES MATRICULADOS</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #0d1b2a; font-weight: bold; margin-top: 0px;'>MATRIZ OFICIAL DE ESTUDIANTES MATRICULADOS</h4>", unsafe_allow_html=True)
         
         mapeo_visual = {}
         for c in df.columns:
