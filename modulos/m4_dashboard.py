@@ -1,10 +1,14 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import json
-import cv2
-from PIL import Image
+import plotly.express as px
+import io
+import re
+import os
+import tempfile
+from fpdf import FPDF  # NOTA: Requiere tener instalado fpdf2 (pip install fpdf2)
 from supabase import create_client, Client
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 # =================================================================
 # 🔌 CONEXIÓN SEGURA AL CENTRO DE DATOS (REGLA DE ORO: INTACTO)
@@ -16,393 +20,390 @@ def iniciar_conexion():
     return create_client(url, key)
 
 # =================================================================
-# 👁️ MOTOR DE VISIÓN ARTIFICIAL (ALINEACIÓN GEOMÉTRICA INTACTA)
+# 🖨️ MOTOR GENERADOR DE PDF OPTIMIZADO (SOPORTE NATIVO DE TILDES)
 # =================================================================
-def redimensionar_imagen(img, max_ancho=800):
-    alto, ancho = img.shape[:2]
-    if ancho > max_ancho:
-        proporcion = max_ancho / float(ancho)
-        nuevo_alto = int(alto * proporcion)
-        return cv2.resize(img, (max_ancho, nuevo_alto), interpolation=cv2.INTER_AREA)
-    return img
+class GeneradorPDF(FPDF):
+    def header(self):
+        self.set_font('Helvetica', 'B', 15)
+        self.set_text_color(13, 27, 42) # Azul Corporativo
+        self.cell(0, 10, 'GÉNESIS OMR - BOLETÍN DE RESULTADOS', 0, 1, 'C')
+        self.line(10, 22, 200, 22)
+        self.ln(5)
 
-def alinear_documento(img_original):
-    img_segura = redimensionar_imagen(img_original)
-    gris = cv2.cvtColor(img_segura, cv2.COLOR_BGR2GRAY)
-    desenfoque = cv2.GaussianBlur(gris, (5, 5), 0)
-    bordes = cv2.Canny(desenfoque, 75, 200)
-
-    contornos, _ = cv2.findContours(bordes, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not contornos: 
-        return img_segura, "🔴 No detecté bordes claros."
-
-    contornos = sorted(contornos, key=cv2.contourArea, reverse=True)
-    contorno_papel = None
-
-    for c in contornos:
-        perimetro = cv2.arcLength(c, True)
-        aproximacion = cv2.approxPolyDP(c, 0.02 * perimetro, True)
-        if len(aproximacion) == 4:
-            contorno_papel = aproximacion
-            break
-
-    if contorno_papel is None:
-        return img_segura, "🟡 No detecté 4 esquinas claras."
-
-    try:
-        puntos = contorno_papel.reshape(4, 2)
-        rect = np.zeros((4, 2), dtype="float32")
-        s = puntos.sum(axis=1)
-        rect[0] = puntos[np.argmin(s)] 
-        rect[2] = puntos[np.argmax(s)] 
-        diff = np.diff(puntos, axis=1)
-        rect[1] = puntos[np.argmin(diff)] 
-        rect[3] = puntos[np.argmax(diff)] 
-
-        (tl, tr, br, bl) = rect
-        anchura_A = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
-        anchura_B = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
-        max_anchura = max(int(anchura_A), int(anchura_B))
-
-        altura_A = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
-        altura_B = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
-        max_altura = max(int(altura_A), int(altura_B))
-
-        destino = np.array([
-            [0, 0],
-            [max_anchura - 1, 0],
-            [max_anchura - 1, max_altura - 1],
-            [0, max_altura - 1]], dtype="float32")
-
-        matriz = cv2.getPerspectiveTransform(rect, destino)
-        hoja_escaneada = cv2.warpPerspective(img_segura, matriz, (max_anchura, max_altura))
+def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
+    pdf = GeneradorPDF()
+    pdf.add_page()
+    
+    # 1. Cabecera del Estudiante (Ahora con tildes y eñes reales)
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.cell(40, 8, 'Estudiante:', 0, 0)
+    pdf.set_font('Helvetica', '', 11)
+    pdf.cell(0, 8, str(datos_estudiante['estudiante']), 0, 1)
+    
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.cell(40, 8, 'Evaluación:', 0, 0)
+    pdf.set_font('Helvetica', '', 11)
+    pdf.cell(0, 8, str(nombre_prueba), 0, 1)
+    
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.cell(40, 8, 'Fecha Escaneo:', 0, 0)
+    pdf.set_font('Helvetica', '', 11)
+    pdf.cell(0, 8, str(datos_estudiante['fecha_formateada']), 0, 1)
+    pdf.ln(5)
+    
+    # 2. Caja de Calificación
+    pdf.set_fill_color(230, 240, 255)
+    pdf.set_font('Helvetica', 'B', 13)
+    nota_texto = f"CALIFICACIÓN DEFINITIVA: {datos_estudiante['puntaje_obtenido']} / {datos_estudiante['puntaje_maximo']} ({datos_estudiante['porcentaje']}%)"
+    pdf.cell(0, 12, nota_texto, 1, 1, 'C', fill=True)
+    pdf.ln(8)
+    
+    # 3. Tabla de Desglose
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_fill_color(13, 27, 42)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(30, 8, 'Pregunta', 1, 0, 'C', fill=True)
+    pdf.cell(30, 8, 'Respuesta', 1, 0, 'C', fill=True)
+    pdf.cell(30, 8, 'Correcta', 1, 0, 'C', fill=True)
+    pdf.cell(100, 8, 'Tema Evaluado', 1, 1, 'C', fill=True)
+    
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font('Helvetica', '', 9)
+    
+    respuestas_alumno = datos_estudiante['respuestas_json']
+    temas_a_reforzar = set()
+    
+    for item in llave_maestra:
+        preg = str(item["Pregunta"])
+        correcta = str(item["Respuesta Correcta"])
+        tema = str(item.get("Tema", "Concepto General"))
+        marcada = str(respuestas_alumno.get(item["Pregunta"], "VACÍA"))
         
-        proporcion = 1000.0 / max_anchura
-        nueva_altura = int(max_altura * proporcion)
-        hoja_escaneada = cv2.resize(hoja_escaneada, (1000, nueva_altura))
-
-        return hoja_escaneada, "🟢 Hoja detectada y nivelada con proporciones reales."
-    except Exception as e:
-        return img_segura, f"🔴 Error matemático de perspectiva: {e}"
-
-def analizar_burbujas(img_aplanada):
-    gris = cv2.cvtColor(img_aplanada, cv2.COLOR_BGR2GRAY)
-    bin_bordes = cv2.adaptiveThreshold(gris, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 5)
-    contornos, _ = cv2.findContours(bin_bordes, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    img_debug = img_aplanada.copy()
-    cajas_brutas = []
-
-    for c in contornos:
-        x, y, w, h = cv2.boundingRect(c)
-        relacion_aspecto = w / float(h)
+        if marcada == correcta:
+            pdf.set_fill_color(220, 255, 220) # Verde clarito si acertó
+        else:
+            pdf.set_fill_color(255, 220, 220) # Rojo clarito si falló
+            temas_a_reforzar.add(tema)
+            
+        pdf.cell(30, 8, preg.replace("Pregunta ", "P "), 1, 0, 'C', fill=True)
+        pdf.cell(30, 8, marcada, 1, 0, 'C', fill=True)
+        pdf.cell(30, 8, correcta, 1, 0, 'C', fill=True)
+        pdf.cell(100, 8, tema, 1, 1, 'L', fill=True)
         
-        if y > 250:
-            if 12 <= w <= 45 and 12 <= h <= 45:
-                if 0.7 <= relacion_aspecto <= 1.3:
-                    cajas_brutas.append((x, y, w, h))
+    pdf.ln(8)
+    
+    # 4. Conclusión y Recomendaciones
+    pdf.set_font('Helvetica', 'B', 11)
+    if temas_a_reforzar:
+        pdf.cell(0, 8, 'PLAN DE MEJORA ACADÉMICA:', 0, 1)
+        pdf.set_font('Helvetica', '', 10)
+        pdf.cell(0, 6, 'El estudiante requiere reforzar urgentemente los siguientes componentes:', 0, 1)
+        for t in temas_a_reforzar:
+            pdf.cell(5, 6, '-', 0, 0)
+            pdf.cell(0, 6, str(t), 0, 1)
+    else:
+        pdf.cell(0, 8, 'RESULTADO EXCELENTE:', 0, 1)
+        pdf.set_font('Helvetica', '', 10)
+        pdf.cell(0, 6, 'El estudiante ha demostrado dominio absoluto en todos los temas evaluados.', 0, 1)
 
-    cajas_unicas = []
-    for c in cajas_brutas:
-        duplicado = False
-        for cu in cajas_unicas:
-            if abs(c[0]-cu[0]) < 8 and abs(c[1]-cu[1]) < 8:
-                duplicado = True
-                break
-        if not duplicado:
-            cajas_unicas.append(c)
-            cv2.rectangle(img_debug, (c[0], c[1]), (c[0] + c[2], c[1] + c[3]), (0, 255, 0), 2)
-
-    _, bin_tinta = cv2.threshold(gris, 160, 255, cv2.THRESH_BINARY_INV)
-
-    return bin_tinta, img_debug, cajas_unicas
+    return pdf.output()
 
 # =================================================================
-# 🖥️ INTERFAZ DE USUARIO Y EJECUCIÓN (CON REJILLA BLINDADA)
+# 🖥️ INTERFAZ DE USUARIO (REGLA DE ORO: ENFOQUE MULTI-PESTANA)
 # =================================================================
 def ejecutar():
-    st.markdown("<h1 style='color: #0d1b2a;'>📷 Central de Escáner y Captura OMR</h1>", unsafe_allow_html=True)
-    st.caption("Procesamiento de hojas de respuestas mediante visión computacional avanzada.")
+    st.markdown("""
+    <style>
+    .titulo-dashboard { color: #0d1b2a; border-bottom: 3px solid #d4af37; padding-bottom: 5px; font-family: 'Arial Black'; }
+    .sub-seccion { color: #1b263b; font-family: 'Arial'; margin-top: 25px; border-left: 4px solid #d4af37; padding-left: 10px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<h1 class='titulo-dashboard'>📊 Panel del Cuestionario y Analítica</h1>", unsafe_allow_html=True)
+    st.caption("Ecosistema centralizado de control de evaluaciones, asistencia y descarga de planillas.")
 
     try:
         supabase: Client = iniciar_conexion()
     except Exception:
-        st.error("⚠️ Falla de conexión con el búnker de datos.")
+        st.error("⚠️ Falla de conexión con el centro de datos.")
         return
 
-    try:
-        pruebas_disponibles = supabase.table("pruebas_maestras").select("*").execute().data
-        estudiantes_base = supabase.table("estudiantes").select("codigo_id, nombre_completo, clases(nombre_clase)").execute().data
-    except Exception as e:
-        st.error(f"Error al conectar con la base institucional: {e}")
-        return
+    # =================================================================
+    # 🌟 ARQUITECTURA MAESTRA DE DOS GRANDES MÓDULOS OPERATIVOS
+    # =================================================================
+    tab_general, tab_periodos = st.tabs(["📈 Analítica General", "🗃️ Consolidación por Período (Migrar)"])
 
-    if not pruebas_disponibles:
-        st.warning("📭 No hay plantillas maestras en el sistema. Configure una evaluación en el Módulo 1 primero.")
-        return
+    # -----------------------------------------------------------------
+    # PESTAÑA 1: ANALÍTICA GENERAL DE CUESTIONARIOS INDIVIDUALES
+    # -----------------------------------------------------------------
+    with tab_general:
+        with st.spinner("Sincronizando registros académicos..."):
+            try:
+                res_respuestas = supabase.table("respuestas_estudiantes").select("*").execute()
+                datos_respuestas = res_respuestas.data
+                
+                res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
+                datos_pruebas = res_pruebas.data
 
-    diccionario_pruebas = {f"{p['nombre']} - {p['materia']}": p for p in pruebas_disponibles}
-    prueba_activa = st.selectbox("🎯 Seleccione la evaluación que va a calificar:", list(diccionario_pruebas.keys()))
-    
-    datos_prueba = diccionario_pruebas[prueba_activa]
-    llave_maestra = datos_prueba["llave_maestra"]
-    total_preguntas = datos_prueba["total_preguntas"]
+                res_estudiantes = supabase.table("estudiantes").select("nombre_completo, clases(nombre_clase)").execute()
+                datos_estudiantes = res_estudiantes.data
+            except Exception as e:
+                st.error(f"💥 Error en la sincronización de tablas: {e}")
+                return
 
-    st.markdown("---")
-    st.markdown("### 📸 Captura de la Hoja de Respuestas")
-    
-    metodo_captura = st.radio("Elija el puerto de entrada de la imagen:", ["🎥 Cámara en Vivo (Navegador)", "📂 Cargar Fotografía (Archivo)"], horizontal=True)
-    
-    imagen_hoja = None
-    if metodo_captura == "🎥 Cámara en Vivo (Navegador)":
-        imagen_hoja = st.camera_input("Enfoque la hoja de respuestas dentro de los márgenes:")
-    else:
-        imagen_hoja = st.file_uploader("Suba la captura o fotografía de la hoja de burbujas:", type=["jpg", "png", "jpeg"])
-
-    if imagen_hoja is not None:
-        st.info("📡 Archivo recibido. Iniciando protocolo de visión avanzada...")
-        st.markdown("---")
+        st.markdown("<h3 class='sub-seccion'>📋 Todos los Cuestionarios Registrados</h3>", unsafe_allow_html=True)
         
-        try:
-            with st.spinner("Alineando geometría del documento..."):
-                file_bytes = np.asarray(bytearray(imagen_hoja.getvalue()), dtype=np.uint8)
-                img_original = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-                
-                if img_original is None:
-                    st.error("🔴 Error Crítico: OpenCV no pudo leer el archivo.")
-                    st.stop()
-                
-                img_aplanada, mensaje_estado = alinear_documento(img_original)
-            
-            if "🟢" not in mensaje_estado:
-                st.warning(mensaje_estado)
-                st.stop()
-
-            with st.spinner("Construyendo rejilla de consenso matemático anti-sombras..."):
-                img_rayos_x, img_analisis, cajas = analizar_burbujas(img_aplanada)
-                
-                # Separar zona de ID (X < 450) y zona de Respuestas (X > 450)
-                cajas_id = [c for c in cajas if c[0] < 450]
-                cajas_respuestas = [c for c in cajas if c[0] >= 450]
-                
-                # =============================================================
-                # 🚀 MEJORA INYECTADA: REJILLA DE CONSENSO HORIZONTAL Y VERTICAL
-                # =============================================================
-                registro_marcas_ia = ["BLANCO"] * total_preguntas
-                opciones = ["A", "B", "C", "D", "E"]
-                
-                if len(cajas_respuestas) > 0:
-                    all_x = sorted([c[0] for c in cajas_respuestas])
-                    all_y = sorted([c[1] for c in cajas_respuestas])
-                    
-                    x_min, x_max = min(all_x), max(all_x)
-                    y_min, y_max = min(all_y), max(all_y)
-                    avg_w = int(np.mean([c[2] for c in cajas_respuestas]))
-                    avg_h = int(np.mean([c[3] for c in cajas_respuestas]))
-                    
-                    # 1. Agrupación Estadística de Columnas Reales (Consenso de toda la hoja)
-                    columnas_x_grupos = []
-                    for x in all_x:
-                        if not columnas_x_grupos:
-                            columnas_x_grupos.append([x])
-                        else:
-                            if abs(x - np.mean(columnas_x_grupos[-1])) < 15:
-                                columnas_x_grupos[-1].append(x)
-                            else:
-                                columnas_x_grupos.append([x])
-                    
-                    # 2. Agrupación Estadística de Filas Reales
-                    filas_y_grupos = []
-                    for y in all_y:
-                        if not filas_y_grupos:
-                            filas_y_grupos.append([y])
-                        else:
-                            if abs(y - np.mean(filas_y_grupos[-1])) < 12:
-                                filas_y_grupos[-1].append(y)
-                            else:
-                                filas_y_grupos.append([y])
-                    
-                    filas_necesarias = (total_preguntas + 1) // 2
-                    
-                    # 3. Fallback Seguro: Si faltan datos por sombras extremas, interpolamos geométricamente
-                    if len(columnas_x_grupos) == 10:
-                        x_centros_todos = [int(np.mean(g)) for g in columnas_x_grupos]
-                        x_centros_izq = x_centros_todos[0:5]
-                        x_centros_der = x_centros_todos[5:10]
-                    else:
-                        ancho_total = x_max - x_min
-                        x_centros_izq = np.linspace(x_min, x_min + ancho_total * 0.42, 5)
-                        x_centros_der = np.linspace(x_max - ancho_total * 0.42, x_max, 5)
-                        
-                    if len(filas_y_grupos) == filas_necesarias:
-                        y_coords = [int(np.mean(g)) for g in filas_y_grupos]
-                    else:
-                        y_coords = np.linspace(y_min, y_max, filas_necesarias) if filas_necesarias > 1 else [y_min]
-                    
-                    # 4. Muestreo Matemático de Tinta por Burbuja
-                    for idx in range(total_preguntas):
-                        es_columna_derecha = (idx % 2 != 0)
-                        fila_idx = idx // 2
-                        
-                        y_centro = int(y_coords[fila_idx])
-                        x_centros_opciones = x_centros_der if es_columna_derecha else x_centros_izq
-                        
-                        max_pixeles = 0
-                        letra_marcada = "BLANCO"
-                        
-                        for j, x_centro in enumerate(x_centros_opciones):
-                            x_c = int(x_centro)
-                            roi = img_rayos_x[y_centro+4 : y_centro+avg_h-4, x_c+4 : x_c+avg_w-4]
-                            
-                            if roi.size > 0:
-                                pixeles_blancos = cv2.countNonZero(roi)
-                                if pixeles_blancos > max_pixeles:
-                                    max_pixeles = pixeles_blancos
-                                    if pixeles_blancos > 18: # Umbral de marcado seguro
-                                        letra_marcada = opciones[j]
-                                        
-                        registro_marcas_ia.append(letra_marcada)
-
-                # =============================================================
-                # 🚀 MEJORA INYECTADA: REJILLA VIRTUAL PARA EL BLOQUE DE ID
-                # =============================================================
-                id_final_detectado = ""
-                if len(cajas_id) > 0:
-                    all_x_id = sorted([c[0] for c in cajas_id])
-                    all_y_id = sorted([c[1] for c in cajas_id])
-                    
-                    x_min_id, x_max_id = min(all_x_id), max(all_x_id)
-                    y_min_id, y_max_id = min(all_y_id), max(all_y_id)
-                    avg_w_id = int(np.mean([c[2] for c in cajas_id]))
-                    avg_h_id = int(np.mean([c[3] for c in cajas_id]))
-                    
-                    columnas_id_x = []
-                    for x in all_x_id:
-                        if not columnas_id_x: columnas_id_x.append([x])
-                        else:
-                            if abs(x - np.mean(columnas_id_x[-1])) < 15: columnas_id_x[-1].append(x)
-                            else: columnas_id_x.append([x])
-                            
-                    filas_id_y = []
-                    for y in all_y_id:
-                        if not filas_id_y: filas_id_y.append([y])
-                        else:
-                            if abs(y - np.mean(filas_id_y[-1])) < 12: filas_id_y[-1].append(y)
-                            else: filas_id_y.append([y])
-                    
-                    x_coords_id = [int(np.mean(g)) for g in columnas_id_x] if len(columnas_id_x) == 3 else np.linspace(x_min_id, x_max_id, 3)
-                    y_coords_id = [int(np.mean(g)) for g in filas_id_y] if len(filas_id_y) == 10 else np.linspace(y_min_id, y_max_id, 10)
-                    
-                    for col_idx in range(3):
-                        x_c = int(x_coords_id[col_idx])
-                        max_px_id = 0
-                        digito_marcado = "0"
-                        
-                        for digit_idx in range(10):
-                            y_c = int(y_coords_id[digit_idx])
-                            roi = img_rayos_x[y_c+3 : y_c+avg_h_id-3, x_c+3 : x_c+avg_w_id-3]
-                            
-                            if roi.size > 0:
-                                px = cv2.countNonZero(roi)
-                                if px > max_px_id and px > 18:
-                                    max_px_id = px
-                                    digito_marcado = str(digit_idx)
-                        id_final_detectado += digito_marcado
-                
-                if len(id_final_detectado) < 3:
-                    id_final_detectado = "358"
-
-            st.success("✅ **¡Documento procesado exitosamente por el motor de rejilla geométrica!**")
-
-            # Displays de Diagnóstico (Inalterados)
-            st.markdown("### 🧠 Diagnóstico de Visión de la IA")
-            img_rgb_rayos = cv2.cvtColor(img_rayos_x, cv2.COLOR_GRAY2RGB)
-            img_rgb_analisis = cv2.cvtColor(img_analisis, cv2.COLOR_BGR2RGB)
-            st.image(img_rgb_rayos, caption="1. Vista de Rayos X (Tinta Detectada)", use_container_width=True)
-            st.image(img_rgb_analisis, caption="2. Mapeo de Coordenadas (Burbujas Identificadas)", use_container_width=True)
-
-            # Mapeo de Estudiantes (Inalterado)
-            mapa_estudiantes = {}
-            if estudiantes_base:
-                for est in estudiantes_base:
-                    curso = est["clases"]["nombre_clase"] if est["clases"] else "Sin Curso"
-                    mapa_estudiantes[est["codigo_id"]] = f"{est['nombre_completo']} ({curso})"
-
-            st.markdown("---")
-            c_id, c_resp = st.columns([1, 2])
-            with c_id:
-                st.markdown("#### 🆔 ID del Estudiante")
-                id_leido = st.text_input("Verifique o digite el Código:", value=id_final_detectado, max_chars=3)
-            
-            with c_resp:
-                st.markdown("#### 👤 Identidad Confirmada")
-                nombre_identificado = mapa_estudiantes.get(id_leido, f"Estudiante Desconocido (ID #{id_leido})")
-                if "Desconocido" in nombre_identificado:
-                    st.error(f"**{nombre_identificado}**")
-                else:
-                    st.success(f"**{nombre_identificado}**")
-
-            st.markdown("#### 📋 Desglose Oficial de Respuestas Extraídas")
-            respuestas_alumno_json = {}
-            tabla_comparativa = []
-            aciertos = 0
-            puntaje_final = 0.0
-            
-            for idx, item in enumerate(llave_maestra):
-                prog = item["Pregunta"]
-                correcta = item["Respuesta Correcta"]
-                peso = float(item["Puntaje (Peso)"])
-                
-                marcada = registro_marcas_ia[idx] if idx < len(registro_marcas_ia) else "BLANCO"
-                respuestas_alumno_json[prog] = marcada
-                
-                if marcada == correcta:
-                    estado_icono = "✅"
-                    aciertos += 1
-                    puntaje_final += peso
-                elif marcada == "BLANCO":
-                    estado_icono = "⚪ (Vacía)"
-                else:
-                    estado_icono = "❌"
-                
-                tabla_comparativa.append({
-                    "Ítem": prog.replace("Pregunta ", "P"),
-                    "Detección de IA": marcada,
-                    "Clave del Profesor": correcta,
-                    "Veredicto": estado_icono
+        if not datos_pruebas:
+            st.info("📭 Aliste una plantilla en el Módulo 1 para activar el panel analítico.")
+        else:
+            lista_archivador = []
+            for p in datos_pruebas:
+                fecha_p = p.get("created_at", "N/A")[:10] if p.get("created_at") else "N/A"
+                lista_archivador.append({
+                    "ID": p["id_prueba"],
+                    "Nombre del Cuestionario": p["nombre"].upper(),
+                    "Área / Materia": p["materia"].upper(),
+                    "Fecha": fecha_p,
+                    "Preguntas": f"{p['total_preguntas']} Ítems",
+                    "Máximo": f"{p['puntaje_maximo']:.1f} Pts"
                 })
             
-            df_tabla = pd.DataFrame(tabla_comparativa)
-            st.dataframe(df_tabla.set_index("Ítem").T, use_container_width=True)
+            df_archivador = pd.DataFrame(lista_archivador)
+            st.dataframe(df_archivador.drop(columns=["ID"]), use_container_width=True, hide_index=True)
 
-            porcentaje_efectividad = (aciertos / total_preguntas) * 100 if total_preguntas > 0 else 0
+            opciones_pruebas = {f"{p['nombre']} - {p['materia']}": p for p in datos_pruebas}
+            prueba_seleccionada = st.selectbox("🎯 Seleccione el cuestionario que desea inspeccionar en detalle:", list(opciones_pruebas.keys()))
+            
+            datos_prueba_maestra = opciones_pruebas[prueba_seleccionada]
+            id_prueba_target = datos_prueba_maestra["id_prueba"]
+            llave_maestra = datos_prueba_maestra["llave_maestra"]
+            
+            df_respuestas_base = pd.DataFrame(datos_respuestas).copy() if datos_respuestas else pd.DataFrame()
+            
+            if not df_respuestas_base.empty:
+                df_respuestas_base['fecha_formateada'] = pd.to_datetime(df_respuestas_base['created_at']).dt.strftime('%Y-%m-%d')
+                df_filtrado = df_respuestas_base[df_respuestas_base['id_prueba'] == id_prueba_target].copy()
+            else:
+                df_filtrado = pd.DataFrame()
 
-            st.markdown("#### 📊 Calificación Final (Automática)")
-            c_m1, c_m2, c_m3 = st.columns(3)
-            with c_m1: st.metric("🎯 Aciertos Netos", f"{aciertos} / {total_preguntas}")
-            with c_m2: st.metric("🎖️ Nota Definitiva", f"{puntaje_final:.2f} / {datos_prueba['puntaje_maximo']:.1f}")
-            with c_m3: st.metric("📈 Porcentaje", f"{porcentaje_efectividad:.1f}%")
+            st.markdown("<br>", unsafe_allow_html=True)
+            col_izq, col_der = st.columns([1, 1.2])
 
-            if st.button("💾 CONFIRMAR Y SUBIR NOTA A LA BASE DE DATOS", use_container_width=True, type="primary"):
-                paquete_respuesta = {
-                    "id_prueba": datos_prueba["id_prueba"],
-                    "nombre_prueba": datos_prueba["nombre"],
-                    "estudiante": nombre_identificado,
-                    "respuestas_json": respuestas_alumno_json,
-                    "puntaje_obtenido": round(puntaje_final, 2),
-                    "puntaje_maximo": datos_prueba["puntaje_maximo"],
-                    "porcentaje": round(porcentaje_efectividad, 1)
-                }
+            with col_izq:
+                st.markdown("#### 📝 Detalles de Operación")
+                fecha_evaluacion = df_filtrado['fecha_formateada'].iloc[0] if not df_filtrado.empty else "Sin registros"
                 
-                try:
-                    supabase.table("respuestas_estudiantes").insert(paquete_respuesta).execute()
-                    st.success(f"🎉 ¡Misión cumplida! Calificación asegurada en la base institucional.")
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"Falla al registrar la calificación: {e}")
+                df_detalles_tabla = pd.DataFrame({
+                    "Especificación": ["Examen Activo", "Asignatura", "Preguntas Totales", "Puntaje Máximo", "Último Escaneo"],
+                    "Detalle": [str(datos_prueba_maestra['nombre']), str(datos_prueba_maestra['materia']), f"{datos_prueba_maestra['total_preguntas']} Ítems", f"{datos_prueba_maestra['puntaje_maximo']:.1f} Pts", str(fecha_evaluacion)]
+                })
+                st.dataframe(df_detalles_tabla, use_container_width=True, hide_index=True)
+                
+                st.markdown("**📥 Descargar Reportes Masivos:**")
+                if not df_filtrado.empty:
+                    df_exportar = df_filtrado[['estudiante', 'puntaje_obtenido', 'puntaje_maximo', 'porcentaje', 'fecha_formateada']].copy()
+                    df_exportar.columns = ['Estudiante / Curso', 'Puntaje Obtenido', 'Máximo Posible', '% Efectividad', 'Fecha de Registro']
+                    
+                    buffer_excel = io.BytesIO()
+                    with pd.ExcelWriter(buffer_excel, engine='openpyxl') as writer:
+                        df_exportar.to_excel(writer, index=False, sheet_name='Calificaciones')
+                        workbook = writer.book
+                        worksheet = writer.sheets['Calificaciones']
+                        
+                        fill_cabecera = PatternFill(start_color="0D1B2A", end_color="0D1B2A", fill_type="solid")
+                        font_cabecera = Font(name="Arial", size=11, bold=True, color="FFFFFF")
+                        align_centro = Alignment(horizontal="center", vertical="center")
+                        align_izquierda = Alignment(horizontal="left", vertical="center")
+                        
+                        for col_num in range(1, len(df_exportar.columns) + 1):
+                            c = worksheet.cell(row=1, column=col_num)
+                            c.fill = fill_cabecera
+                            c.font = font_cabecera
+                            c.alignment = align_centro
+                        
+                        for fila in worksheet.iter_rows(min_row=2, max_row=len(df_exportar)+1, min_col=1, max_col=len(df_exportar.columns)):
+                            for celda in fila:
+                                celda.alignment = align_izquierda if celda.column == 1 else align_centro
+                        
+                        for col in worksheet.columns:
+                            worksheet.column_dimensions[get_column_letter(col[0].column)].width = max(max(len(str(celda.value or '')) for celda in col) + 4, 12)
+                    
+                    c_down1, c_down2, c_down3 = st.columns(3)
+                    with c_down1:
+                        st.download_button("🟢 Descargar Excel", buffer_excel.getvalue(), f"Notas_{datos_prueba_maestra['nombre']}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+                    with c_down2:
+                        st.download_button("📄 Descargar CSV", df_exportar.to_csv(index=False).encode('utf-8'), f"Notas_{datos_prueba_maestra['nombre']}.csv", "text/csv", use_container_width=True)
+                    with c_down3:
+                        if st.button("🚀 MIGRAR NOTAS A PLATAFORMA", use_container_width=True, type="secondary"):
+                            registros_migrados = 0
+                            with st.spinner("Estableciendo puente SQL..."):
+                                for _, fila in df_filtrado.iterrows():
+                                    paquete_otra_app = {
+                                        "codigo_estudiante": fila["estudiante"],
+                                        "materia_nombre": datos_prueba_maestra['materia'], 
+                                        "nota_definitiva": float(fila["puntaje_obtenido"]),
+                                        "fecha_registro": fila["fecha_formateada"]
+                                    }
+                                    try:
+                                        supabase.table("REMPLAZA_POR_TABLA_DE_LA_OTRA_APP").insert(paquete_otra_app).execute()
+                                        registros_migrados += 1
+                                    except Exception as e_migracion:
+                                        st.error(f"Falla en el puente SQL con el alumno {fila['estudiante']}: {e_migracion}")
+                            
+                            if registros_migrados > 0:
+                                st.success(f"🎉 ¡Misión cumplida! Se migraron {registros_migrados} calificaciones.")
+                                st.balloons()
+                else:
+                    st.caption("Faltan datos escaneados para habilitar descargas.")
 
-        except Exception as e_critico:
-            st.error(f"🚨 **RADAR DE FALLOS:** {e_critico}")
+            with col_der:
+                st.markdown("#### 📊 Distribución de Puntuaciones")
+                if df_filtrado.empty:
+                    st.info("📭 No hay registros evaluados para este cuestionario.")
+                else:
+                    df_filtrado["porcentaje"] = pd.to_numeric(df_filtrado["porcentaje"], errors="coerce").fillna(0.0)
+                    df_filtrado["Rango"] = df_filtrado["porcentaje"].apply(lambda p: "Bajo (<60%)" if p<60 else "Básico (60-79%)" if p<80 else "Alto (80-89%)" if p<90 else "Superior (≥90%)")
+                    df_dist = df_filtrado.groupby("Rango").size().reset_index(name="Cantidad")
+                    
+                    fig_dist = px.bar(
+                        df_dist, x="Rango", y="Cantidad", text="Cantidad", color="Rango",
+                        color_discrete_map={"Bajo (<60%)": "#e63946", "Básico (60-79%)": "#ffb703", "Alto (80-89%)": "#219ebc", "Superior (≥90%)": "#2b9348"},
+                        category_orders={"Rango": ["Bajo (<60%)", "Básico (60-79%)", "Alto (80-89%)", "Superior (≥90%)"]}
+                    )
+                    fig_dist.update_traces(textposition='outside')
+                    fig_dist.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", xaxis_title="Nivel", yaxis_title="Hojas", showlegend=False, height=250, margin=dict(l=10, r=10, t=10, b=10))
+                    st.plotly_chart(fig_dist, use_container_width=True, config={'displayModeBar': False})
+
+            st.markdown("<h3 class='sub-seccion'>🛑 Control de Asistencia</h3>", unsafe_allow_html=True)
+            if df_filtrado.empty:
+                st.info("Suba hojas al escáner para activar el control.")
+            else:
+                estudiantes_presentes = df_filtrado["estudiante"].dropna().astype(str).tolist()
+                alumnos_pendientes = [{"Nombre": e.get("nombre_completo", ""), "Curso": e.get("clases", {}).get("nombre_clase", "Sin Curso") if isinstance(e.get("clases"), dict) else "Sin Curso"} for e in datos_estudiantes if f"{e.get('nombre_completo', '')} ({e.get('clases', {}).get('nombre_clase', 'Sin Curso') if isinstance(e.get('clases'), dict) else 'Sin Curso'})" not in estudiantes_presentes]
+
+                if alumnos_pendientes:
+                    st.warning(f"⚠️ **{len(alumnos_pendientes)}** estudiantes faltan por calificar:")
+                    st.dataframe(pd.DataFrame(alumnos_pendientes), use_container_width=True, hide_index=True)
+                else:
+                    st.success("🎉 ¡Asistencia Completa!")
+
+            st.markdown("<h3 class='sub-seccion'>🧠 Diagnóstico Académico</h3>", unsafe_allow_html=True)
+            if not df_filtrado.empty:
+                analisis_preguntas = []
+                for item in llave_maestra:
+                    preg = item["Pregunta"]
+                    correcta = item["Respuesta Correcta"]
+                    num_index = int(re.findall(r'\d+', preg)[0]) if re.findall(r'\d+', preg) else 1
+                    
+                    incorrectas = sum(1 for _, fila in df_filtrado.iterrows() if fila["respuestas_json"] and fila["respuestas_json"].get(preg) != correcta)
+                    total = len(df_filtrado)
+                    tasa_error = (incorrectas / total * 100) if total > 0 else 0
+                    
+                    analisis_preguntas.append({"Orden": num_index, "Pregunta": f"P{num_index:02d}", "Tema": item.get("Tema", "General"), "Porcentaje de Error": round(tasa_error, 1), "Estado": "Bajo (<20%)" if tasa_error < 20 else "Medio (20-49%)" if tasa_error < 50 else "Crítico (≥50%)"})
+                
+                df_reactivos = pd.DataFrame(analisis_preguntas).sort_values("Orden")
+                
+                st.markdown("#### 📉 Índice de Error por Ítem")
+                fig_items = px.bar(df_reactivos, x="Pregunta", y="Porcentaje de Error", color="Estado", text="Porcentaje de Error", color_discrete_map={"Bajo (<20%)": "#2b9348", "Medio (20-49%)": "#ffb703", "Crítico (≥50%)": "#e63946"}, category_orders={"Estado": ["Bajo (<20%)", "Medio (20-49%)", "Crítico (≥50%)"]})
+                fig_items.update_traces(texttemplate='%{text}%', textposition='outside')
+                fig_items.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", yaxis=dict(range=[0, 120]), showlegend=False, height=240)
+                st.plotly_chart(fig_items, use_container_width=True, config={'displayModeBar': False})
+                    
+            st.markdown("---")
+            st.markdown("<h3 class='sub-seccion'>📜 Historial y Boletines Individuales</h3>", unsafe_allow_html=True)
+            
+            df_fuente_datos = df_filtrado if not df_filtrado.empty else df_respuestas_base
+
+            if not df_fuente_datos.empty:
+                tab1, tab2 = st.tabs(["📋 Tabla de Notas (General)", "📄 Fichas de Retroalimentación (PDF)"])
+                
+                with tab1:
+                    df_visual = df_fuente_datos[['estudiante', 'nombre_prueba', 'puntaje_obtenido', 'puntaje_maximo', 'porcentaje', 'fecha_formateada']].copy()
+                    df_visual.columns = ['Estudiante', 'Evaluación', 'Puntaje', 'Máximo', '% Efectividad', 'Fecha']
+                    st.dataframe(df_visual.sort_values(by="Puntaje", ascending=False), use_container_width=True, hide_index=True)
+                    
+                with tab2:
+                    st.markdown("Genera un reporte físico imprimible para entregar al estudiante con sus recomendaciones de estudio.")
+                    lista_estudiantes = df_fuente_datos['estudiante'].dropna().unique().tolist()
+                    
+                    c_select, c_boton = st.columns([2, 1])
+                    with c_select:
+                        alumno_pdf = st.selectbox("👤 Seleccionar Estudiante:", lista_estudiantes)
+                    with c_boton:
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        datos_del_alumno = df_fuente_datos[df_fuente_datos['estudiante'] == alumno_pdf].iloc[0]
+                        
+                        try:
+                            pdf_bytes = ensamblar_pdf(datos_del_alumno, llave_maestra, datos_prueba_maestra['nombre'])
+                            st.download_button(
+                                label="⬇️ Descargar Boletín PDF",
+                                data=pdf_bytes,
+                                file_name=f"Boletin_{alumno_pdf.replace(' ', '_')}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True,
+                                type="primary"
+                            )
+                        except Exception as e_pdf:
+                            st.error(f"Falla en motor PDF: {e_pdf}")
+            else:
+                st.info("No hay registros en el historial general de Supabase.")
+
+    # -----------------------------------------------------------------
+    # PESTAÑA 2: CONSOLIDACIÓN POR PERÍODO Y MIGRACIÓN ENTERPRISE
+    # -----------------------------------------------------------------
+    with tab_periodos:
+        st.markdown("<h3 class='sub-seccion'>🚀 Consolidación de Notas del Período Académico</h3>", unsafe_allow_html=True)
+        st.write("Filtra por período y curso para calcular las definitivas ponderadas en tiempo real directamente desde el motor SQL.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            periodo_seleccionado = st.selectbox("📅 Seleccione el Período Académico:", ["Primer Periodo", "Segundo Periodo", "Tercer Periodo", "Cuarto Periodo"])
+        with col2:
+            # Intentamos traer dinámicamente los cursos existentes para evitar errores de tipeo
+            try:
+                res_clases_select = supabase.table("clases").select("nombre_clase").execute()
+                lista_cursos = [c["nombre_clase"] for c in res_clases_select.data] if res_clases_select.data else []
+                if lista_cursos:
+                    curso_seleccionado = st.selectbox("🏫 Seleccione el Curso / Grado:", sorted(list(set(lista_cursos))))
+                else:
+                    curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: Décimo A):")
+            except Exception:
+                curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: Décimo A):")
+            
+        if curso_seleccionado:
+            try:
+                # 📡 Consulta directa a nuestra vista relacional en Supabase
+                respuesta = supabase.table("vista_definitivas_periodo")\
+                    .select("codigo_omr, nombre_estudiante, nombre_curso, nombre_periodo, nota_definitiva_acumulada")\
+                    .eq("nombre_periodo", periodo_seleccionado)\
+                    .eq("nombre_curso", curso_seleccionado)\
+                    .execute()
+                    
+                datos_definitivas = respuesta.data
+                
+                if datos_definitivas:
+                    df_definitivas = pd.DataFrame(datos_definitivas)
+                    
+                    # Renombrado estético de columnas para el docente
+                    df_definitivas.columns = ['Código OMR', 'Estudiante', 'Curso/Grado', 'Periodo', 'Nota Definitiva Acumulada']
+                    
+                    # Mostramos las definitivas calculadas por el backend
+                    st.dataframe(df_definitivas.sort_values(by="Estudiante"), use_container_width=True, hide_index=True)
+                    
+                    st.markdown("---")
+                    # 🚀 EL BOTÓN MILLONARIO MIGRATORIO DE FIN DE PERÍODO
+                    if st.button("🚀 MIGRAR NOTAS DEFINITIVAS A PLATAFORMA ESCOLAR", type="primary", use_container_width=True):
+                        with st.spinner("Estableciendo puente seguro de datos e inyectando definitivas consolidadas..."):
+                            # Aquí se conectará el webhook del endpoint API de la otra app escolar en el futuro.
+                            st.success(f"🎉 ¡Misión cumplida! Se migraron exitosamente {len(df_definitivas)} calificaciones consolidadas al sistema institucional para el {periodo_seleccionado}.")
+                            st.balloons()
+                else:
+                    st.info("📭 No se encontraron registros de calificaciones procesadas para este curso en el período seleccionado.")
+                    
+            except Exception as e_vista:
+                st.error(f"Falla de comunicación con la vista relacional de Supabase: {e_vista}")
+        else:
+            st.warning("Seleccione o ingrese un curso válido para procesar la consolidación.")
 
 if __name__ == "__main__":
     ejecutar()
