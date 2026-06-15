@@ -7,11 +7,11 @@ from supabase import create_client, Client
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
-    key = st.secrets["SUPABASE_KEY"].strip()
+    key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
 def ejecutar():
-    # 🎨 INYECCIÓN DE ALTA INGENIERÍA VISUAL (GÉNESIS ANALYTICS HUD)
+    # 🎨 INYECCIÓN DE ALTA INGENIERÍA VISUAL (GÉNESIS ANALYTICS HUD - TU DISEÑO)
     st.markdown("""
         <style>
         .titulo-genesis {
@@ -27,6 +27,14 @@ def ejecutar():
             margin-top: -5px;
             letter-spacing: 1.5px;
             text-transform: uppercase;
+        }
+        
+        /* ⚡ FIX DE ALTO CONTRASTE: Letras oscuras y nítidas en las pestañas */
+        button[data-baseweb="tab"] p {
+            color: #0d1b2a !important;
+            font-weight: 800 !important;
+            text-transform: uppercase;
+            font-size: 12px !important;
         }
         
         .hud-container {
@@ -52,7 +60,7 @@ def ejecutar():
         .hud-label {
             font-size: 11px;
             font-weight: 800;
-            color: #5c677d;
+            color: #0d1b2a !important;
             letter-spacing: 1px;
             text-transform: uppercase;
             margin-bottom: 4px;
@@ -97,7 +105,6 @@ def ejecutar():
             
             with st.spinner("Compilando telemetría analítica..."):
                 while True:
-                    # CORREGIDO: Se cambia 'estudiantes' por 'data_estudiantes' y se añade orden
                     resultado = supabase.table("data_estudiantes")\
                         .select('ID_Estudiante, Nombre_Completo, Grado, Grupo')\
                         .order('ID_Estudiante')\
@@ -119,8 +126,22 @@ def ejecutar():
             return
 
         if estudiantes_base:
-            df_unicos = pd.DataFrame(estudiantes_base).drop_duplicates(subset=["ID_Estudiante"])
+            df_raw = pd.DataFrame(estudiantes_base)
+            
+            # Control de nombres de columna
+            col_id = "ID_Estudiante" if "ID_Estudiante" in df_raw.columns else "id_estudiante"
+            col_grado = "Grado" if "Grado" in df_raw.columns else "grado"
+            col_grupo = "Grupo" if "Grupo" in df_raw.columns else "grupo"
+            
+            df_unicos = df_raw.drop_duplicates(subset=[col_id])
             total_alumnos = len(df_unicos)
+
+            # Extraemos número real de evaluaciones
+            try:
+                res_pru = supabase.table("pruebas_maestras").select("id").execute()
+                total_pruebas = len(res_pru.data) if res_pru.data else 0
+            except Exception:
+                total_pruebas = 0
 
             # HUD de Control Analítico Superior
             st.markdown(f"""
@@ -131,7 +152,7 @@ def ejecutar():
                     </div>
                     <div class="hud-card" style="border-top-color: #d4af37;">
                         <div class="hud-label" style="color: #bfa12a;">📝 EVALUACIONES PROCESADAS</div>
-                        <div class="hud-value" style="color: #d4af37;">0</div>
+                        <div class="hud-value" style="color: #d4af37;">{total_pruebas}</div>
                     </div>
                     <div class="hud-card" style="border-top-color: #2b9348;">
                         <div class="hud-label" style="color: #2b9348;">📈 EFECTIVIDAD INSTITUCIONAL</div>
@@ -140,7 +161,20 @@ def ejecutar():
                 </div>
             """, unsafe_allow_html=True)
 
-            # Cápsula de despliegue informativo
+            # 📊 1. EL GRÁFICO PEQUEÑO DE ARRIBA (Consolidado por Grupos A, B, C)
+            st.markdown("<h5 style='color: #0d1b2a; font-weight: bold; margin-bottom: 5px;'>📊 Monitoreo de Grupos Operativos</h5>", unsafe_allow_html=True)
+            if col_grupo in df_unicos.columns:
+                df_unicos[col_grupo] = df_unicos[col_grupo].astype(str).str.strip().str.upper()
+                df_grupo_chart = df_unicos[col_grupo].value_counts().reset_index()
+                df_grupo_chart.columns = ["Grupo", "Cantidad"]
+                df_grupo_chart = df_grupo_chart.set_index("Grupo")
+                
+                # Despliegue en formato compacto
+                c_chart, _ = st.columns([1, 1])
+                with c_chart:
+                    st.bar_chart(df_grupo_chart, use_container_width=True)
+
+            # Cápsula de despliegue informativo (Tu matriz blanca)
             st.markdown("""
                 <div class="contenedor-matriz">
                     <h4 style="color: #0d1b2a; font-weight: bold; margin-top: 0px; margin-bottom: 10px;">📊 Distribución del Rendimiento de Matrícula</h4>
@@ -148,7 +182,32 @@ def ejecutar():
                 </div>
             """, unsafe_allow_html=True)
             
-            # Aquí la app continuará desplegando tus gráficas de forma normal
+            # 📊 2. EL GRÁFICO GRANDE DE ABAJO (Distribución por Grados de 1° a 11°)
+            if col_grado in df_unicos.columns:
+                df_unicos[col_grado] = df_unicos[col_grado].astype(str).str.strip()
+                df_grado_chart = df_unicos[col_grado].value_counts().reset_index()
+                df_grado_chart.columns = ["Grado Académico", "Estudiantes Registrados"]
+                df_grado_chart = df_grado_chart.set_index("Grado Académico")
+                
+                # Despliegue masivo a lo ancho de la pantalla abajo
+                st.bar_chart(df_grado_chart, use_container_width=True)
+            
             st.info("💡 **Sistema Listo:** Seleccione una evaluación en la central de escáner para comenzar a proyectar las gráficas estadísticas en tiempo real.")
         else:
             st.warning("⚠️ No se detectaron registros válidos para estructurar las analíticas.")
+
+    with tab2:
+        st.markdown("""
+            <div class="contenedor-matriz">
+                <h4 style="color: #0d1b2a; font-weight: bold; margin-top: 0px; margin-bottom: 10px;">📅 Consolidado Histórico por Período Académico</h4>
+                <p style="color: #666; font-size: 13px; margin-bottom: 0px;">Módulo preparado para recibir las migraciones de notas calculadas desde la planilla oficial.</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        data_periodos = pd.DataFrame({
+            "Período Evaluativo": ["Primer Período", "Segundo Período", "Tercer Período", "Cuarto Período"],
+            "Meta Promedio Esperada": [3.8, 4.0, 4.0, 4.2],
+            "Tasa de Aprobación Objetivo": ["85.0%", "90.0%", "92.0%", "95.0%"],
+            "Estado del Canal": ["En Espera...", "Bloqueado", "Bloqueado", "Bloqueado"]
+        })
+        st.dataframe(data_periodos, use_container_width=True, hide_index=True)
