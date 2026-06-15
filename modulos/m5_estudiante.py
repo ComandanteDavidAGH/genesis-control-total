@@ -5,7 +5,7 @@ import datetime
 from supabase import create_client, Client
 
 # =================================================================
-# 🔌 CONEXIÓN AL BÚNKER (REGLA DE ORO: PROTECCIÓN DE CREDENCIALES)
+# 🔒 CONEXIÓN AL BÚNKER (REGLA DE ORO: PROTECCIÓN DE CREDENCIALES)
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].replace('"', '').replace("'", "").strip()
@@ -99,7 +99,9 @@ def ejecutar():
         # Decodificador de seguridad para la Llave Maestra
         claves_lista = []
         if isinstance(llave_maestra, str):
-            puntaje_base = float(datos_prueba.get("puntaje_maximo", 5.0)) / total_preguntas
+            # 🌟 PARACAÍDAS INYECTADO: Evita la caída por float(None) al decodificar la llave en texto
+            max_pts_seguro = float(datos_prueba.get("puntaje_maximo") if datos_prueba.get("puntaje_maximo") is not None else 5.0)
+            puntaje_base = max_pts_seguro / total_preguntas
             claves_lista = [{"Pregunta": f"Pregunta {i+1}", "Respuesta Correcta": v.strip(), "Puntaje (Peso)": puntaje_base} for i, v in enumerate(llave_maestra.split(","))]
         else:
             claves_lista = llave_maestra
@@ -142,8 +144,6 @@ def ejecutar():
                         puntaje_total += peso
 
                 porcentaje = (puntaje_total / maximo_posible) * 100 if maximo_posible > 0 else 0
-                
-                # Formato estándar unificado para alimentar tu Dashboard analítico sin quiebres
                 identidad_maestra = f"{estudiante_sel} ({curso_sel})"
 
                 paquete_nota = {
