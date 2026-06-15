@@ -1,3 +1,5 @@
 streamlit
-supabase
+supabase==2.4.0
 pandas
+numpy
+opencv-python-headless
