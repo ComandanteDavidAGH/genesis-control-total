@@ -62,7 +62,7 @@ def ejecutar():
     st.markdown("<p class='titulo-nasa'>✍️ Registro de Calificaciones</p>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # 📥 EXTRACCIÓN Y EXTRAÍDO DE LOGÍSTICA DE BASE DE DATOS
+    # 📥 EXTRACCIÓN GLOBAL DESDE EL BÚNKER DE SUPABASE
     try:
         supabase = iniciar_conexion()
         with st.spinner("Sincronizando coordenadas de la base de datos masiva..."):
@@ -80,10 +80,8 @@ def ejecutar():
         col_id = "id_estudiante" if "id_estudiante" in df_base.columns else df_base.columns[0]
         col_nombre = "nombre_completo" if "nombre_completo" in df_base.columns else df_base.columns[1]
 
-        # Depuración estricta anti-clones para dejar registros únicos
-        df_base = df_base.drop_duplicates(subset=[col_id])
-
-        # ⚡ ESCÁNER DE COMPATIBILIDAD: Extraemos los formatos exactos de la DB
+        # 🌟 SOLUCIÓN AL ERROR: Eliminamos la limpieza global que borraba alumnos por error.
+        # Extraemos las opciones directamente de la data en bruto para mantener sintonía.
         grados_reales = sorted(list(df_base[col_grado].dropna().astype(str).unique()), key=lambda x: int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else 0)
         grupos_reales = sorted(list(df_base[col_grupo].dropna().astype(str).unique()))
 
@@ -91,7 +89,7 @@ def ejecutar():
         st.error(f"🚨 Falla en la telemetría del búnker: {e}")
         return
 
-    # 🎛️ PANEL DE COORDENADAS ACADÉMICAS CON DATOS REALES (Cero fallas por strings)
+    # 🎛️ PANEL DE COORDENADAS ACADÉMICAS CON DATOS REALES
     st.markdown("<h5 style='color: #0d1b2a; font-weight: bold;'>🔍 Parámetros de Calificación</h5>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -103,15 +101,17 @@ def ejecutar():
     with c4:
         periodo_sel = st.selectbox("📅 Período:", ["Primer Período", "Segundo Período", "Tercer Período", "Cuarto Período"])
 
-    # Filtrado simétrico exacto usando los datos del escáner
+    # 🗺️ FILTRADO COMPLETO: Primero aislamos el salón real
     df_filtrado = df_base[
         (df_base[col_grado].astype(str) == grado_sel) & 
         (df_base[col_grupo].astype(str) == grupo_sel)
     ].copy()
     
+    # 🔐 FILTRO ANTI-CLONES LOCAL: Eliminamos duplicados solo si se repite el mismo nombre EN ESTE SALÓN
+    df_filtrado = df_filtrado.drop_duplicates(subset=[col_nombre])
     df_filtrado = df_filtrado.sort_values(by=col_nombre)
 
-    # 📊 DESPLIEGUE DEL ESCENARIO MATRICIAL COMPLETO
+    # 📊 DESPLEGUE DEL ESCENARIO MATRICIAL COMPLETO
     if not df_filtrado.empty:
         total_alumnos = len(df_filtrado)
         
@@ -140,7 +140,7 @@ def ejecutar():
         # Corona de la Matriz Oficial
         st.markdown(f"<div class='barra-matriz-oficial'>Planilla Oficial: {asignatura_sel} - Curso {grado_sel} Grupo {grupo_sel}</div>", unsafe_allow_html=True)
 
-        # Construcción del lienzo limpio con notas en cero con formato estricto
+        # Construcción del lienzo limpio con notas en cero
         planilla_real = pd.DataFrame({
             "ID Estudiante": df_filtrado[col_id],
             "Nombre Completo": df_filtrado[col_nombre],
