@@ -19,10 +19,11 @@ with st.sidebar:
         "1. Creador de Pruebas",
         "2. Digitar Notas",
         "3. Escáner OMR",
-        "4. Dashboard Analítico"
+        "4. Dashboard Analítico",
+        "5. Portal de Evaluación Estudiantil"  # 🌟 ¡NUEVA COORDENADA DE VUELO CONECTADA!
     ])
 
-# 🧭 ENRUTADOR INTELIGENTE DEL BÚNKER (¡CABLES RECONECTADOS!)
+# 🧭 ENRUTADOR INTELIGENTE DEL BÚNKER (¡TODOS LOS CABLES INTERCONECTADOS!)
 if seleccion == "0. Gestión de Estudiantes":
     from modulos import m0_gestion
     m0_gestion.ejecutar()
@@ -35,13 +36,18 @@ elif seleccion == "2. Digitar Notas":
     from modulos import m2_digitar
     m2_digitar.ejecutar()
 
-elif seleccion == "3. Escáner OMR":  # 🌟 ¡EL CABLE CONECTADO AQUÍ!
+elif seleccion == "3. Escáner OMR":  
     from modulos import m3_escaner
     m3_escaner.ejecutar()
 
 elif seleccion == "4. Dashboard Analítico":
     from modulos import m4_dashboard
     m4_dashboard.ejecutar()
+
+elif seleccion == "5. Portal de Evaluación Estudiantil":  # 🌟 ENLACE DIGITAL ACTIVO
+    from modulos import m5_estudiante
+    m5_estudiante.ejecutar()
+
 else:
     st.title(seleccion)
     st.info("Módulo en proceso de optimización óptica...")
