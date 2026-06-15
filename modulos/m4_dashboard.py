@@ -7,8 +7,7 @@ from supabase import create_client, Client
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
-    # Enlace tolerante a actualizaciones criptográficas de Supabase
-    key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
+    key = st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
 def ejecutar():
@@ -28,14 +27,6 @@ def ejecutar():
             margin-top: -5px;
             letter-spacing: 1.5px;
             text-transform: uppercase;
-        }
-        
-        /* ⚡ FIX DE ALTO CONTRASTE: Eliminamos el tono pálido de las pestañas */
-        button[data-baseweb="tab"] p {
-            color: #0d1b2a !important;
-            font-weight: 800 !important;
-            text-transform: uppercase;
-            font-size: 12px !important;
         }
         
         .hud-container {
@@ -61,7 +52,7 @@ def ejecutar():
         .hud-label {
             font-size: 11px;
             font-weight: 800;
-            color: #0d1b2a !important; /* Ajustado a oscuro para máxima nitidez */
+            color: #5c677d;
             letter-spacing: 1px;
             text-transform: uppercase;
             margin-bottom: 4px;
