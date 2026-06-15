@@ -1,18 +1,11 @@
-import streamlit as st
+import streamlit st
 import pandas as pd
 from supabase import create_client
 
 def iniciar_conexion():
-    # 🔒 PROTOCOLO OFICIAL: Extracción segura desde el entorno cifrado de Streamlit
     url = st.secrets["SUPABASE_URL"].strip()
-    key = st.secrets["SUPABASE_KEY"].strip()
-    
-    # Telemetría de diagnóstico (Solo mide longitud y puntas para auditoría)
-    st.info(f"""🔍 **Rastreador de Conexión Institucional:**
-* 🛰️ URL activa: `{url}`
-* 📏 Longitud en Secrets: **{len(key)}** caracteres.
-* 🛡️ Firma actual: `{key[:8]}...` | Final: `...{key[-8:]}`""")
-    
+    # Mantiene compatibilidad automática con tus credenciales seguras
+    key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
 def ejecutar():
@@ -40,7 +33,7 @@ def ejecutar():
         estudiantes_base = []
         offset, chunk_size = 0, 1000
         
-        with st.spinner("Sincronizando base de datos masiva..."):
+        with st.spinner("Sincronizando registros estudiantiles..."):
             while True:
                 resultado = supabase.table("data_estudiantes")\
                     .select('*')\
@@ -67,6 +60,7 @@ def ejecutar():
         total_grados = df_unicos[col_grado].nunique() if col_grado in df_unicos.columns else 0
         total_grupos = df_unicos[col_grupo].nunique() if col_grupo in df_unicos.columns else 0
 
+        # Bloque estético HUD oficial
         st.markdown(f"""
             <div class="hud-container">
                 <div class="hud-card">
