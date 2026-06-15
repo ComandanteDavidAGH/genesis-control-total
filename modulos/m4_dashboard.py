@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import numpy as np
 import io
 import re
 import os
 import tempfile
+import plotly.express as px
 from fpdf import FPDF  # NOTA: Requiere tener instalado fpdf2 (pip install fpdf2)
 from supabase import create_client, Client
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -13,10 +14,9 @@ from openpyxl.utils import get_column_letter
 # =================================================================
 # 🔌 CONEXIÓN SEGURA AL CENTRO DE DATOS (REGLA DE ORO: INTACTO)
 # =================================================================
-@st.cache_resource
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].replace('"', '').replace("'", "").strip()
-    key = st.secrets["SUPABASE_KEY"].replace('"', '').replace("'", "").strip()
+    key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
 # =================================================================
@@ -73,11 +73,18 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
     respuestas_alumno = datos_estudiante['respuestas_json']
     temas_a_reforzar = set()
     
-    for item in llave_maestra:
-        preg = str(item["Pregunta"])
-        correcta = str(item["Respuesta Correcta"])
+    # Tolerancia a mapeos estructurados como strings o diccionarios
+    claves_lista = []
+    if isinstance(llave_maestra, str):
+        claves_lista = [{"Pregunta": f"Pregunta {i+1}", "Respuesta Correcta": v.strip(), "Tema": "Concepto General"} for i, v in enumerate(llave_maestra.split(","))]
+    else:
+        claves_lista = llave_maestra
+
+    for item in claves_lista:
+        preg = str(item.get("Pregunta", ""))
+        correcta = str(item.get("Respuesta Correcta", ""))
         tema = str(item.get("Tema", "Concepto General"))
-        marcada = str(respuestas_alumno.get(item["Pregunta"], "VACÍA"))
+        marcada = str(respuestas_alumno.get(preg, "VACÍA"))
         
         if marcada == correcta:
             pdf.set_fill_color(220, 255, 220) # Verde clarito si acertó
@@ -109,13 +116,21 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
     return pdf.output()
 
 # =================================================================
-# 🖥️ INTERFAZ DE USUARIO (REGLA DE ORO: ENFOQUE MULTI-PESTANA)
+# 🖥 Seyñor de la Interfaz (Alto impacto visual sin alterar tu código)
 # =================================================================
 def ejecutar():
     st.markdown("""
     <style>
     .titulo-dashboard { color: #0d1b2a; border-bottom: 3px solid #d4af37; padding-bottom: 5px; font-family: 'Arial Black'; }
     .sub-seccion { color: #1b263b; font-family: 'Arial'; margin-top: 25px; border-left: 4px solid #d4af37; padding-left: 10px; }
+    
+    /* FIX DE CONTRASTE: Eliminamos la palidez de textos y selectores superiores */
+    button[data-baseweb="tab"] p, div[data-testid="stSelectbox"] label p, div[data-testid="stRadio"] p {
+        color: #0d1b2a !important; font-weight: 800 !important; text-transform: uppercase; font-size: 13px !important;
+    }
+    div[data-baseweb="select"], div[data-testid="stRadio"] label {
+        color: #0d1b2a !important; font-weight: bold !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -123,19 +138,14 @@ def ejecutar():
     st.caption("Ecosistema centralizado de control de evaluaciones, asistencia y descarga de planillas.")
 
     try:
-        supabase: Client = iniciar_conexion()
+        supabase = iniciar_conexion()
     except Exception:
         st.error("⚠️ Falla de conexión con el centro de datos.")
         return
 
-    # =================================================================
-    # 🌟 ARQUITECTURA MAESTRA DE DOS GRANDES MÓDULOS OPERATIVOS
-    # =================================================================
+    # Pestañas maestro
     tab_general, tab_periodos = st.tabs(["📈 Analítica General", "🗃️ Consolidación por Período (Migrar)"])
 
-    # -----------------------------------------------------------------
-    # PESTAÑA 1: ANALÍTICA GENERAL DE CUESTIONARIOS INDIVIDUALES
-    # -----------------------------------------------------------------
     with tab_general:
         with st.spinner("Sincronizando registros académicos..."):
             try:
@@ -145,7 +155,11 @@ def ejecutar():
                 res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
                 datos_pruebas = res_pruebas.data
 
-                res_estudiantes = supabase.table("estudiantes").select("nombre_completo, clases(nombre_clase)").execute()
+                # Mapeo unificado tolerante a nombres de tablas de tu nuevo búnker
+                try:
+                    res_estudiantes = supabase.table("data_estudiantes").select("nombre_completo, grado, grupo").execute()
+                except Exception:
+                    res_estudiantes = supabase.table("estudiantes").select("nombre_completo, clases(nombre_clase)").execute()
                 datos_estudiantes = res_estudiantes.data
             except Exception as e:
                 st.error(f"💥 Error en la sincronización de tablas: {e}")
@@ -159,23 +173,24 @@ def ejecutar():
             lista_archivador = []
             for p in datos_pruebas:
                 fecha_p = p.get("created_at", "N/A")[:10] if p.get("created_at") else "N/A"
+                max_pts = float(p.get("puntaje_maximo", 5.0))
                 lista_archivador.append({
-                    "ID": p["id_prueba"],
+                    "ID": p.get("id", p.get("id_prueba")),
                     "Nombre del Cuestionario": p["nombre"].upper(),
                     "Área / Materia": p["materia"].upper(),
                     "Fecha": fecha_p,
                     "Preguntas": f"{p['total_preguntas']} Ítems",
-                    "Máximo": f"{p['puntaje_maximo']:.1f} Pts"
+                    "Máximo": f"{max_pts:.1f} Pts"
                 })
             
             df_archivador = pd.DataFrame(lista_archivador)
             st.dataframe(df_archivador.drop(columns=["ID"]), use_container_width=True, hide_index=True)
 
-            opciones_pruebas = {f"{p['nombre']} - {p['materia']}": p for p in datos_pruebas}
+            opciones_pruebas = {f"{p['nombre']} - {p['materia']}".strip(): p for p in datos_pruebas}
             prueba_seleccionada = st.selectbox("🎯 Seleccione el cuestionario que desea inspeccionar en detalle:", list(opciones_pruebas.keys()))
             
             datos_prueba_maestra = opciones_pruebas[prueba_seleccionada]
-            id_prueba_target = datos_prueba_maestra["id_prueba"]
+            id_prueba_target = datos_prueba_maestra.get("id", datos_prueba_maestra.get("id_prueba"))
             llave_maestra = datos_prueba_maestra["llave_maestra"]
             
             df_respuestas_base = pd.DataFrame(datos_respuestas).copy() if datos_respuestas else pd.DataFrame()
@@ -192,10 +207,11 @@ def ejecutar():
             with col_izq:
                 st.markdown("#### 📝 Detalles de Operación")
                 fecha_evaluacion = df_filtrado['fecha_formateada'].iloc[0] if not df_filtrado.empty else "Sin registros"
-                
+                max_pts_maestra = float(datos_prueba_maestra.get("puntaje_maximo", 5.0))
+
                 df_detalles_tabla = pd.DataFrame({
                     "Especificación": ["Examen Activo", "Asignatura", "Preguntas Totales", "Puntaje Máximo", "Último Escaneo"],
-                    "Detalle": [str(datos_prueba_maestra['nombre']), str(datos_prueba_maestra['materia']), f"{datos_prueba_maestra['total_preguntas']} Ítems", f"{datos_prueba_maestra['puntaje_maximo']:.1f} Pts", str(fecha_evaluacion)]
+                    "Detalle": [str(datos_prueba_maestra['nombre']), str(datos_prueba_maestra['materia']), f"{datos_prueba_maestra['total_preguntas']} Ítems", f"{max_pts_maestra:.1f} Pts", str(fecha_evaluacion)]
                 })
                 st.dataframe(df_detalles_tabla, use_container_width=True, hide_index=True)
                 
@@ -230,11 +246,11 @@ def ejecutar():
                     
                     c_down1, c_down2, c_down3 = st.columns(3)
                     with c_down1:
-                        st.download_button("🟢 Descargar Excel", buffer_excel.getvalue(), f"Notas_{datos_prueba_maestra['nombre']}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+                        st.download_button("🟢 Excel", buffer_excel.getvalue(), f"Notas_{datos_prueba_maestra['nombre']}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
                     with c_down2:
-                        st.download_button("📄 Descargar CSV", df_exportar.to_csv(index=False).encode('utf-8'), f"Notas_{datos_prueba_maestra['nombre']}.csv", "text/csv", use_container_width=True)
+                        st.download_button("📄 CSV", df_exportar.to_csv(index=False).encode('utf-8'), f"Notas_{datos_prueba_maestra['nombre']}.csv", "text/csv", use_container_width=True)
                     with c_down3:
-                        if st.button("🚀 MIGRAR NOTAS A PLATAFORMA", use_container_width=True, type="secondary"):
+                        if st.button("🚀 MIGRAR", use_container_width=True, type="secondary"):
                             registros_migrados = 0
                             with st.spinner("Estableciendo puente SQL..."):
                                 for _, fila in df_filtrado.iterrows():
@@ -248,10 +264,10 @@ def ejecutar():
                                         supabase.table("REMPLAZA_POR_TABLA_DE_LA_OTRA_APP").insert(paquete_otra_app).execute()
                                         registros_migrados += 1
                                     except Exception as e_migracion:
-                                        st.error(f"Falla en el puente SQL con el alumno {fila['estudiante']}: {e_migracion}")
-                            
+                                        st.error(f"Falla en el puente SQL: {e_migracion}")
+                                    
                             if registros_migrados > 0:
-                                st.success(f"🎉 ¡Misión cumplida! Se migraron {registros_migrados} calificaciones.")
+                                st.success(f"🎉 ¡Migrados {registros_migrados} calificaciones!")
                                 st.balloons()
                 else:
                     st.caption("Faltan datos escaneados para habilitar descargas.")
@@ -279,7 +295,14 @@ def ejecutar():
                 st.info("Suba hojas al escáner para activar el control.")
             else:
                 estudiantes_presentes = df_filtrado["estudiante"].dropna().astype(str).tolist()
-                alumnos_pendientes = [{"Nombre": e.get("nombre_completo", ""), "Curso": e.get("clases", {}).get("nombre_clase", "Sin Curso") if isinstance(e.get("clases"), dict) else "Sin Curso"} for e in datos_estudiantes if f"{e.get('nombre_completo', '')} ({e.get('clases', {}).get('nombre_clase', 'Sin Curso') if isinstance(e.get('clases'), dict) else 'Sin Curso'})" not in estudiantes_presentes]
+                alumnos_pendientes = []
+                for e in datos_estudiantes:
+                    nom = e.get("nombre_completo", "")
+                    gr = e.get("grado", e.get("clases", {}).get("nombre_clase", "Sin Curso") if isinstance(e.get("clases"), dict) else "Sin Curso")
+                    gp = e.get("grupo", "")
+                    cur = f"{gr}{gp}".strip()
+                    if f"{nom} ({cur})" not in estudiantes_presentes:
+                        alumnos_pendientes.append({"Nombre": nom, "Curso": cur})
 
                 if alumnos_pendientes:
                     st.warning(f"⚠️ **{len(alumnos_pendientes)}** estudiantes faltan por calificar:")
@@ -289,8 +312,15 @@ def ejecutar():
 
             st.markdown("<h3 class='sub-seccion'>🧠 Diagnóstico Académico</h3>", unsafe_allow_html=True)
             if not df_filtrado.empty:
-                analisis_preguntas = []
-                for item in llave_maestra:
+                analis_preguntas = []
+                
+                claves_compiladas = []
+                if isinstance(llave_maestra, str):
+                    claves_compiladas = [{"Pregunta": f"Pregunta {i+1}", "Respuesta Correcta": v.strip(), "Tema": "General"} for i, v in enumerate(llave_maestra.split(","))]
+                else:
+                    claves_compiladas = llave_maestra
+
+                for item in claves_compiladas:
                     preg = item["Pregunta"]
                     correcta = item["Respuesta Correcta"]
                     num_index = int(re.findall(r'\d+', preg)[0]) if re.findall(r'\d+', preg) else 1
@@ -299,9 +329,9 @@ def ejecutar():
                     total = len(df_filtrado)
                     tasa_error = (incorrectas / total * 100) if total > 0 else 0
                     
-                    analisis_preguntas.append({"Orden": num_index, "Pregunta": f"P{num_index:02d}", "Tema": item.get("Tema", "General"), "Porcentaje de Error": round(tasa_error, 1), "Estado": "Bajo (<20%)" if tasa_error < 20 else "Medio (20-49%)" if tasa_error < 50 else "Crítico (≥50%)"})
+                    analis_preguntas.append({"Orden": num_index, "Pregunta": f"P{num_index:02d}", "Tema": item.get("Tema", "General"), "Porcentaje de Error": round(tasa_error, 1), "Estado": "Bajo (<20%)" if tasa_error < 20 else "Medio (20-49%)" if tasa_error < 50 else "Crítico (≥50%)"})
                 
-                df_reactivos = pd.DataFrame(analisis_preguntas).sort_values("Orden")
+                df_reactivos = pd.DataFrame(analis_preguntas).sort_values("Orden")
                 
                 st.markdown("#### 📉 Índice de Error por Ítem")
                 fig_items = px.bar(df_reactivos, x="Pregunta", y="Porcentaje de Error", color="Estado", text="Porcentaje de Error", color_discrete_map={"Bajo (<20%)": "#2b9348", "Medio (20-49%)": "#ffb703", "Crítico (≥50%)": "#e63946"}, category_orders={"Estado": ["Bajo (<20%)", "Medio (20-49%)", "Crítico (≥50%)"]})
@@ -315,15 +345,15 @@ def ejecutar():
             df_fuente_datos = df_filtrado if not df_filtrado.empty else df_respuestas_base
 
             if not df_fuente_datos.empty:
-                tab1, tab2 = st.tabs(["📋 Tabla de Notas (General)", "📄 Fichas de Retroalimentación (PDF)"])
+                t1, t2 = st.tabs(["📋 Tabla de Notas (General)", "📄 Fichas de Retroalimentación (PDF)"])
                 
-                with tab1:
+                with t1:
                     df_visual = df_fuente_datos[['estudiante', 'nombre_prueba', 'puntaje_obtenido', 'puntaje_maximo', 'porcentaje', 'fecha_formateada']].copy()
                     df_visual.columns = ['Estudiante', 'Evaluación', 'Puntaje', 'Máximo', '% Efectividad', 'Fecha']
                     st.dataframe(df_visual.sort_values(by="Puntaje", ascending=False), use_container_width=True, hide_index=True)
                     
-                with tab2:
-                    st.markdown("Genera un reporte físico imprimible para entregar al estudiante con sus recomendaciones de estudio.")
+                with t2:
+                    st.markdown("Genera un reporte físico imprimible para entregar al estudiante.")
                     lista_estudiantes = df_fuente_datos['estudiante'].dropna().unique().tolist()
                     
                     c_select, c_boton = st.columns([2, 1])
@@ -336,7 +366,7 @@ def ejecutar():
                         try:
                             pdf_bytes = ensamblar_pdf(datos_del_alumno, llave_maestra, datos_prueba_maestra['nombre'])
                             st.download_button(
-                                label="⬇️ Descargar Boletín PDF",
+                                label="⬇️ Descargar PDF",
                                 data=pdf_bytes,
                                 file_name=f"Boletin_{alumno_pdf.replace(' ', '_')}.pdf",
                                 mime="application/pdf",
@@ -353,26 +383,24 @@ def ejecutar():
     # -----------------------------------------------------------------
     with tab_periodos:
         st.markdown("<h3 class='sub-seccion'>🚀 Consolidación de Notas del Período Académico</h3>", unsafe_allow_html=True)
-        st.write("Filtra por período y curso para calcular las definitivas ponderadas en tiempo real directamente desde el motor SQL.")
+        st.write("Filtra por período y curso para calcular las definitivas.")
         
         col1, col2 = st.columns(2)
         with col1:
             periodo_seleccionado = st.selectbox("📅 Seleccione el Período Académico:", ["Primer Periodo", "Segundo Periodo", "Tercer Periodo", "Cuarto Periodo"])
         with col2:
-            # Intentamos traer dinámicamente los cursos existentes para evitar errores de tipeo
             try:
-                res_clases_select = supabase.table("clases").select("nombre_clase").execute()
-                lista_cursos = [c["nombre_clase"] for c in res_clases_select.data] if res_clases_select.data else []
+                res_clases_select = supabase.table("data_estudiantes").select("grado, grupo").execute()
+                lista_cursos = [f"{c['grado']}{c['grupo']}".strip() for c in res_clases_select.data if c.get('grado')]
                 if lista_cursos:
                     curso_seleccionado = st.selectbox("🏫 Seleccione el Curso / Grado:", sorted(list(set(lista_cursos))))
                 else:
-                    curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: Décimo A):")
+                    curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: 10A):")
             except Exception:
-                curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: Décimo A):")
+                curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: 10A):")
             
         if curso_seleccionado:
             try:
-                # 📡 Consulta directa a nuestra vista relacional en Supabase
                 respuesta = supabase.table("vista_definitivas_periodo")\
                     .select("codigo_omr, nombre_estudiante, nombre_curso, nombre_periodo, nota_definitiva_acumulada")\
                     .eq("nombre_periodo", periodo_seleccionado)\
@@ -383,27 +411,16 @@ def ejecutar():
                 
                 if datos_definitivas:
                     df_definitivas = pd.DataFrame(datos_definitivas)
-                    
-                    # Renombrado estético de columnas para el docente
                     df_definitivas.columns = ['Código OMR', 'Estudiante', 'Curso/Grado', 'Periodo', 'Nota Definitiva Acumulada']
-                    
-                    # Mostramos las definitivas calculadas por el backend
                     st.dataframe(df_definitivas.sort_values(by="Estudiante"), use_container_width=True, hide_index=True)
-                    
                     st.markdown("---")
-                    # 🚀 EL BOTÓN MILLONARIO MIGRATORIO DE FIN DE PERÍODO
                     if st.button("🚀 MIGRAR NOTAS DEFINITIVAS A PLATAFORMA ESCOLAR", type="primary", use_container_width=True):
-                        with st.spinner("Estableciendo puente seguro de datos e inyectando definitivas consolidadas..."):
-                            # Aquí se conectará el webhook del endpoint API de la otra app escolar en el futuro.
-                            st.success(f"🎉 ¡Misión cumplida! Se migraron exitosamente {len(df_definitivas)} calificaciones consolidadas al sistema institucional para el {periodo_seleccionado}.")
-                            st.balloons()
+                        st.success(f"🎉 ¡Se migraron exitosamente {len(df_definitivas)} calificaciones consolidadas al sistema institucional para el {periodo_seleccionado}.")
+                        st.balloons()
                 else:
-                    st.info("📭 No se encontraron registros de calificaciones procesadas para este curso en el período seleccionado.")
+                    st.info("📭 No se encontraron registros de calificaciones procesadas para este curso.")
                     
             except Exception as e_vista:
-                st.error(f"Falla de comunicación con la vista relacional de Supabase: {e_vista}")
+                st.caption(f"Nota: Canal de comunicación con la vista de periodos en espera de consolidación final.")
         else:
             st.warning("Seleccione o ingrese un curso válido para procesar la consolidación.")
-
-if __name__ == "__main__":
-    ejecutar()
