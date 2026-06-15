@@ -94,7 +94,7 @@ def analizar_burbujas(img_aplanada):
         x, y, w, h = cv2.boundingRect(c)
         relacion_aspecto = w / float(h)
         
-        # Filtro geométrico espacial para aislar los óvalos de las respuestas
+        # Filtro geométrico espacial para aislar los óvalos de las respuestas (Y > 220)
         if y > 220:
             if 14 <= w <= 45 and 14 <= h <= 45:
                 if 0.7 <= relacion_aspecto <= 1.3:
@@ -188,7 +188,7 @@ def ejecutar():
         st.info("💡 **Próximo Paso Requerido:** Diríjase al menú izquierdo y entre al **'Módulo 2. Creador de Pruebas'** para diseñar su primera evaluación.")
         return
 
-    # 🎛️ CONFIGURACIÓN DE PARÁMETROS SUPERIORES (CON SELECTORES ASOCIATIVOS)
+    # 🎛️ CONFIGURACIÓN DE PARÁMETROS SUPERIORES
     st.markdown("<h5 style='color: #0d1b2a; font-weight: bold;'>🔍 Parámetros de la Evaluación</h5>", unsafe_allow_html=True)
     
     diccionario_pruebas = {f"{p.get('nombre', 'Evaluación')} - {p.get('materia', 'General')}".strip(): p for p in pruebas_disponibles}
@@ -265,7 +265,7 @@ def ejecutar():
         total_preguntas = int(datos_prueba.get("total_preguntas", 10))
         maximo_posible = float(datos_prueba.get("puntaje_maximo") if datos_prueba.get("puntaje_maximo") is not None else 5.0)
 
-        # Filtrar y ordenar la lista oficial de alumnos del curso seleccionado (Garantiza el orden alfabético)
+        # Filtrar y ordenar la lista oficial de alumnos del curso seleccionado (Orden alfabético estricto)
         df_base.columns = [c.lower() for c in df_base.columns]
         col_grado = "grado" if "grado" in df_base.columns else df_base.columns[2]
         col_id = "id_estudiante" if "id_estudiante" in df_base.columns else df_base.columns[0]
@@ -299,22 +299,37 @@ def ejecutar():
                 else:
                     identidad_maestra = f"ALUMNO EXTRA EXCEDENTE {index+1} ({grado_sel})"
 
-                # 3. ALGORITMO OMR DE FILAS Y COLUMNAS: Agrupar burbujas por proximidad de altura (Y)
-                cajas_ordenadas_y = sorted(cajas_unicas, key=lambda b: b[1])
-                filas_burbujas = []
-                fila_actual = []
-                
-                if cajas_ordenadas_y:
-                    ultimo_y = cajas_ordenadas_y[0][1]
-                    for box in cajas_ordenadas_y:
-                        if abs(box[1] - ultimo_y) > 15: # Salto de renglón detectado
-                            filas_burbujas.append(sorted(fila_actual, key=lambda b: b[0])) # Ordenar izquierda a derecha
-                            fila_actual = [box]
-                        else:
-                            fila_actual.append(box)
-                        ultimo_y = box[1]
-                    if fila_actual:
-                        filas_burbujas.append(sorted(fila_actual, key=lambda b: b[0]))
+                # 🌟 REGLA ZIPGRADE 20-ITEMS: Separación absoluta de las dos columnas de la hoja física
+                # Columna Izquierda (Preguntas Impares: P01, P03...) -> X entre 300 y 630 en lienzo normalizado de 1000px
+                burbujas_izq = [b for b in cajas_unicas if 300 < b[0] < 630]
+                # Columna Derecha (Preguntas Pares: P02, P04...) -> X mayores o iguales a 630
+                burbujas_der = [b for b in cajas_unicas if b[0] >= 630]
+
+                # Ordenar cada columna verticalmente por su altura Y
+                burbujas_izq = sorted(burbujas_izq, key=lambda b: b[1])
+                burbujas_der = sorted(burbujas_der, key=lambda b: b[1])
+
+                # Agrupar en filas perfectas de 5 óvalos (Opciones A, B, C, D, E)
+                filas_izq = []
+                for i in range(0, len(burbujas_izq), 5):
+                    chunk = burbujas_izq[i:i+5]
+                    if len(chunk) == 5:
+                        filas_izq.append(sorted(chunk, key=lambda b: b[0])) # Ordenar izquierda a derecha
+
+                filas_der = []
+                for i in range(0, len(burbujas_der), 5):
+                    chunk = burbujas_der[i:i+5]
+                    if len(chunk) == 5:
+                        filas_der.append(sorted(chunk, key=lambda b: b[0])) # Ordenar izquierda a derecha
+
+                # Interpolar las dos listas de renglones para que coincidan con la secuencia consecutiva (P01, P02, P03, P04...)
+                filas_burbujas_intercaladas = []
+                max_renglones = max(len(filas_izq), len(filas_der))
+                for r in range(max_renglones):
+                    if r < len(filas_izq):
+                        filas_burbujas_intercaladas.append(filas_izq[r]) # Agrega la impar (P01, P03...)
+                    if r < len(filas_der):
+                        filas_burbujas_intercaladas.append(filas_der[r]) # Agrega la par (P02, P04...)
 
                 # 4. Evaluar cuáles burbujas fueron rellenadas con lápiz
                 respuestas_detectadas = {}
@@ -329,19 +344,18 @@ def ejecutar():
 
                     opcion_elegida = "VACÍA"
                     
-                    # Si el escáner localizó la fila correspondiente en la hoja física
-                    if q_idx < len(filas_burbujas):
-                        burbujas_pregunta = filas_burbujas[q_idx]
+                    if q_idx < len(filas_burbujas_intercaladas):
+                        burbujas_pregunta = filas_burbujas_intercaladas[q_idx]
                         max_pixeles_negros = -1
                         indice_ganador = -1
                         
                         for b_idx, box in enumerate(burbujas_pregunta):
                             bx, by, bw, bh = box
-                            # Recortar la burbuja en el mapa de tinta y contar píxeles marcados
                             recorte = bin_tinta[by:by+bh, bx:bx+bw]
                             total_negros = cv2.countNonZero(recorte)
                             
-                            if total_negros > max_pixeles_negros and total_negros > 120: # Umbral de seguridad de llenado
+                            # Umbral de seguridad para decretar óvalo pintado
+                            if total_negros > max_pixeles_negros and total_negros > 120: 
                                 max_pixeles_negros = total_negros
                                 indice_ganador = b_idx
                         
@@ -349,13 +363,12 @@ def ejecutar():
                             opcion_elegida = mapeo_opciones[indice_ganador]
 
                     respuestas_detectadas[pregunta_key] = opcion_elegida
-                    
                     if opcion_elegida == respuesta_correcta:
                         puntaje_total += peso_pregunta
 
                 porcentaje = (puntaje_total / maximo_posible) * 100 if maximo_posible > 0 else 0
 
-                # 5. ESTRUCTURA UNIFICADA DE GRABADO (Alimenta directamente tus PDF y Gráficos)
+                # 5. ESTRUCTURA UNIFICADA DE GRABADO (Alimenta tus boletines e informes)
                 paquete_nota = {
                     "id_prueba": datos_prueba.get("id", datos_prueba.get("id_prueba")),
                     "nombre_prueba": datos_prueba["nombre"],
@@ -366,7 +379,7 @@ def ejecutar():
                     "respuestas_json": respuestas_detectadas
                 }
 
-                # Inyección directa en el búnker SQL de Supabase
+                # Inyección directa en la base SQL
                 supabase.table("respuestas_estudiantes").insert(paquete_nota).execute()
 
                 filas_resultados.append({
