@@ -13,7 +13,7 @@ def iniciar_conexion():
     return create_client(url, key)
 
 def ejecutar():
-    # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN) - Respetada
+    # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN) - Respetada al 100%
     st.markdown("""
         <style>
         .titulo-dash { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
@@ -54,7 +54,7 @@ def ejecutar():
         st.info("📭 No se registran evaluaciones maestras en el banco de datos para analizar.")
         return
 
-    # 🎛️ SELECTOR GENERAL DE PRUEBAS
+    # 🎛️ SELECTOR GENERAL DE PRUEBAS - Estructura original intacta
     diccionario_pruebas = {f"{p['nombre']} - {p['materia']}".strip().upper(): p for p in pruebas}
     prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN MÁSTER PARA AUDITAR:", list(diccionario_pruebas.keys()))
 
@@ -80,7 +80,7 @@ def ejecutar():
         for _, fila in df_notas.iterrows():
             estudiante_str = str(fila.get('estudiante', 'ALUMNO ANÓNIMO'))
             
-            # Algoritmo de extracción para separar "Nombre Alumno" y "Curso" - Respetado
+            # Algoritmo de extracción para separar "Nombre Alumno" and "Curso"
             nombre_final = estudiante_str
             curso_final = "SIN CURSO"
             if "(" in estudiante_str and ")" in estudiante_str:
@@ -88,28 +88,17 @@ def ejecutar():
                 nombre_final = parts[0].strip()
                 curso_final = parts[1].replace(")", "").strip()
 
-            # =================================================================
-            # 💉 CIRUGÍA LÁSER APLICADA AQUÍ (Sustitución de las 3 líneas críticas)
-            # =================================================================
-            # Instalamos paracaídas para evitar float(None).
-            
-            # 1. Porcentaje Blindado
+            # 🛡️ PARACAÍDAS ANTI-NULL EN FILAS (Evita que el bucle falle con datos vacíos antiguos)
             raw_pct = fila.get('porcentaje')
             pct = float(raw_pct) if raw_pct is not None else 0.0
-            
-            # 2. Nota Lograda Blindada
+
             raw_nota = fila.get('puntaje_obtenido')
             nota = float(raw_nota) if raw_nota is not None else 0.0
-            
-            # 3. Nota Máxima Blindada
+
             raw_max_p = fila.get('puntaje_maximo')
             max_p = float(raw_max_p) if raw_max_p is not None else 5.0
             
-            # =================================================================
-            # 🚫 FIN DE LA CIRUGÍA LÁSER
-            # =================================================================
-            
-            # Clasificación de rangos oficiales - Respetada
+            # Clasificación de rangos oficiales ZipGrade/Institucionales
             if pct < 60.0:
                 nivel = "Bajo (<60%)"
                 estado = "REPROBADO ❌"
@@ -140,19 +129,27 @@ def ejecutar():
         df_informe_limpio = pd.DataFrame(filas_limpias).sort_values(by="ESTUDIANTE MATRÍCULA")
 
     # =================================================================
-    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE (UX SIMÉTRICA) - Respetado
+    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE (UX SIMÉTRICA ORIGINAL)
     # =================================================================
     c1, c2 = st.columns([1, 1.2])
     
     with c1:
         st.markdown("### 📝 Detalles de Operación")
+        
+        # 🛡️ FIJACIÓN PREVENTIVA DE VISUALIZACIÓN MÁSTER (Soluciona el 'None Pts')
+        raw_max_activa = datos_prueba_activa.get('puntaje_maximo')
+        max_p_display = float(raw_max_activa) if raw_max_activa is not None else 5.0
+
+        raw_items_activa = datos_prueba_activa.get('total_preguntas')
+        items_display = int(raw_items_activa) if raw_items_activa is not None else 10
+
         tabla_detalles = pd.DataFrame({
             "Especificación": ["Examen Activo", "Asignatura", "Preguntas Totales", "Puntaje Máximo", "Último Escaneo"],
             "Detalle": [
                 str(datos_prueba_activa.get("nombre")).upper(),
                 str(datos_prueba_activa.get("materia")).upper(),
-                f"{datos_prueba_activa.get('total_preguntas', 10)} Ítems",
-                f"{datos_prueba_activa.get('puntaje_maximo', 5.0)} Pts",
+                f"{items_display} Ítems",
+                f"{max_p_display:.1f} Pts", # 🟢 ¡Corregido! Muestra el número limpio en lugar de None
                 "2026-06-15"
             ]
         })
@@ -201,7 +198,7 @@ def ejecutar():
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
     # =================================================================
-    # 📋 SECCIÓN INFERIOR: TABLERO GENERAL DE ASISTENCIA - Respetado
+    # 📋 SECCIÓN INFERIOR: TABLERO GENERAL DE ASISTENCIA
     # =================================================================
     st.markdown("---")
     st.markdown("### 📋 Control de Asistencia y Sabana Escaneada")
