@@ -5,6 +5,7 @@ import io
 import re
 import os
 import tempfile
+import datetime
 import plotly.express as px
 from fpdf import FPDF  # NOTA: Requiere tener instalado fpdf2 (pip install fpdf2)
 from supabase import create_client, Client
@@ -12,7 +13,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 # =================================================================
-# 🔌 CONEXIÓN SEGURA AL CENTRO DE DATOS (REGLA DE ORO: INTACTO)
+# 🔒 CONEXIÓN SEGURA AL CENTRO DE DATOS (REGLA DE ORO: INTACTO)
 # =================================================================
 @st.cache_resource
 def iniciar_conexion():
@@ -99,7 +100,7 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
         
     pdf.ln(8)
     
-    # 4. Conclusión y Recomendaciones
+    # 4. Conclusión y Recommendations
     pdf.set_font('Helvetica', 'B', 11)
     if temas_a_reforzar:
         pdf.cell(0, 8, 'PLAN DE MEJORA ACADÉMICA:', 0, 1)
@@ -116,10 +117,10 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
     return pdf.output()
 
 # =================================================================
-# 🖥️ INTERFAZ DE USUARIO (REGLA DE ORO: TU ESTRUCTURA ORIGINAL)
+# 🖥️ INTERFAZ DE USUARIO (REGLA DE ORO: ENFOQUE MULTI-PESTANA)
 # =================================================================
 def ejecutar():
-    # 🎨 FILTRADO QUIRÚRGICO DE CSS: Solo afecta el área central, nunca el menú izquierdo
+    # 🎨 FILTRADO QUIRÚRGICO DE CSS: Solo afecta el área central, el menú izquierdo queda intacto
     st.markdown("""
     <style>
     .titulo-dashboard { color: #0d1b2a; border-bottom: 3px solid #d4af37; padding-bottom: 5px; font-family: 'Arial Black'; }
@@ -129,7 +130,8 @@ def ejecutar():
     div[data-testid="stMainBlockContainer"] div[data-testid="stSelectbox"] label p {
         color: #0d1b2a !important; font-weight: 800 !important; text-transform: uppercase; font-size: 13px !important;
     }
-    div[data-testid="stMainBlockContainer"] div[data-baseweb="select"] {
+    div[data-testid="stMainBlockContainer"] div[data-baseweb="select"], 
+    div[data-testid="stMainBlockContainer"] div[data-testid="stDateInput"] input {
         color: #0d1b2a !important; font-weight: bold !important;
     }
     </style>
@@ -144,9 +146,12 @@ def ejecutar():
         st.error("⚠️ Falla de conexión con el centro de datos.")
         return
 
-    # Tus dos pestañas de la maqueta original
+    # Tus dos grandes pestañas originales
     tab_general, tab_periodos = st.tabs(["📈 Analítica General", "🗃️ Consolidación por Período (Migrar)"])
 
+    # -----------------------------------------------------------------
+    # PESTAÑA 1: ANALÍTICA GENERAL DE CUESTIONARIOS INDIVIDUALES
+    # -----------------------------------------------------------------
     with tab_general:
         with st.spinner("Sincronizando registros académicos..."):
             try:
@@ -156,7 +161,6 @@ def ejecutar():
                 res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
                 datos_pruebas = res_pruebas.data
 
-                # Apuntamos a la tabla real de este proyecto
                 res_estudiantes = supabase.table("data_estudiantes").select("*").execute()
                 datos_estudiantes = res_estudiantes.data
             except Exception as e:
@@ -185,7 +189,17 @@ def ejecutar():
             st.dataframe(df_archivador.drop(columns=["ID"]), use_container_width=True, hide_index=True)
 
             opciones_pruebas = {f"{p['nombre']} - {p['materia']}": p for p in datos_pruebas}
-            prueba_seleccionada = st.selectbox("🎯 Seleccione el cuestionario que desea inspeccionar en detalle:", list(opciones_pruebas.keys()))
+            
+            # 🌟 SELECTORES ORIGINALES OPTIMIZADOS (Acoplados a tus columnas estables)
+            c_sel1, c_sel2 = st.columns(2)
+            with c_sel1:
+                prueba_seleccionada = st.selectbox("🎯 Seleccione el cuestionario que desea inspeccionar en detalle:", list(opciones_pruebas.keys()))
+            with c_sel2:
+                activar_fecha = st.checkbox("🔍 ¿Filtrar resultados por una fecha específica?")
+                if activar_fecha:
+                    filtro_fecha = st.date_input("📅 Seleccione el día en el calendario:", value=datetime.date.today())
+                else:
+                    filtro_fecha = None
             
             datos_prueba_maestra = opciones_pruebas[prueba_seleccionada]
             id_prueba_target = datos_prueba_maestra.get("id", datos_prueba_maestra.get("id_prueba"))
@@ -196,6 +210,9 @@ def ejecutar():
             if not df_respuestas_base.empty:
                 df_respuestas_base['fecha_formateada'] = pd.to_datetime(df_respuestas_base['created_at']).dt.strftime('%Y-%m-%d')
                 df_filtrado = df_respuestas_base[df_respuestas_base['id_prueba'] == id_prueba_target].copy()
+                
+                if filtro_fecha:
+                    df_filtrado = df_filtrado[df_filtrado['fecha_formateada'] == filtro_fecha.strftime('%Y-%m-%d')].copy()
             else:
                 df_filtrado = pd.DataFrame()
 
@@ -393,16 +410,19 @@ def ejecutar():
         with col1:
             periodo_seleccionado = st.selectbox("📅 Seleccione el Período Académico:", ["Primer Periodo", "Segundo Periodo", "Tercer Periodo", "Cuarto Periodo"])
         with col2:
-            # Tu bloque selectbox relacional original impecable adaptado a data_estudiantes
+            # 🌟 MENÚ DESPLEGABLE PREMIUM INTEGRADOR (REEMPLAZA AL TEXT_INPUT MANUAL)
             try:
                 res_clases_select = supabase.table("data_estudiantes").select("grado, grupo").execute()
                 lista_cursos = [f"{c['grado']}{c['grupo']}".strip() for c in res_clases_select.data if c.get('grado')]
+                
                 if lista_cursos:
-                    curso_seleccionado = st.selectbox("🏫 Seleccione el Curso / Grado:", sorted(list(set(lista_cursos))))
+                    cursos_finales = sorted(list(set(lista_cursos)))
                 else:
-                    curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: 10A):")
+                    cursos_finales = ["6A", "6B", "7A", "7B", "8A", "8B", "9A", "9B", "10A", "10B", "11A", "11B"]
+                
+                curso_seleccionado = st.selectbox("🏫 Seleccione el Curso / Grado:", cursos_finales)
             except Exception:
-                curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: 10A):")
+                curso_seleccionado = st.selectbox("🏫 Seleccione el Curso / Grado:", ["6A", "6B", "7A", "7B", "8A", "8B", "9A", "9B", "10A", "10B", "11A", "11B"])
             
         if curso_seleccionado:
             try:
@@ -427,5 +447,3 @@ def ejecutar():
                     
             except Exception as e_vista:
                 st.caption(f"Nota: Canal de comunicación con la vista de periodos en espera de consolidación final.")
-        else:
-            st.warning("Seleccione o ingrese un curso válido para procesar la consolidación.")
