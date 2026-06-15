@@ -31,14 +31,17 @@ elif seleccion == "1. Creador de Pruebas":
     from modulos import m1_creador
     m1_creador.ejecutar()
 
-elif seleccion == "2. Digitar Notas":  # 🌟 ¡LA COORDENADA RECUPERADA!
+elif seleccion == "2. Digitar Notas":
     from modulos import m2_digitar
     m2_digitar.ejecutar()
+
+elif seleccion == "3. Escáner OMR":  # 🌟 ¡EL CABLE CONECTADO AQUÍ!
+    from modulos import m3_escaner
+    m3_escaner.ejecutar()
 
 elif seleccion == "4. Dashboard Analítico":
     from modulos import m4_dashboard
     m4_dashboard.ejecutar()
-
 else:
     st.title(seleccion)
     st.info("Módulo en proceso de optimización óptica...")
