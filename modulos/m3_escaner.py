@@ -83,9 +83,9 @@ def ejecutar():
     estudiantes_existentes = ["JUAN PÉREZ", "MARÍA RODRÍGUEZ", "CARLOS GÓMEZ"]
 
     try:
-        # Extraer grados de la tabla de pruebas
+        # Extraer grados de la tabla de pruebas (Sintaxis corregida aquí)
         if pruebas:
-            g_list = sorted(list(set([str(p['grado']).upper().strip() for p in pruebas if p.get('grado') Bag and str(p['grado']).strip() != 'None'])))
+            g_list = sorted(list(set([str(p['grado']).upper().strip() for p in pruebas if p.get('grado') and str(p['grado']).strip() != 'None'])))
             if g_list: grados_existentes = g_list
             
         # Extraer alumnos históricos para evitar digitación repetida
@@ -94,7 +94,7 @@ def ejecutar():
             e_list = []
             for d in res_est.data:
                 est = str(d.get('estudiante', '')).upper().strip()
-                if "(" in est:  # Limpiamos el sufijo " (CURSO)" para dejar solo el nombre limpio
+                if "(" in est:  
                     est = est.split("(")[0].strip()
                 if est and est != "NONE" and est != "NULL":
                     e_list.append(est)
@@ -115,14 +115,12 @@ def ejecutar():
             prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN A CALIFICAR:", list(diccionario_pruebas.keys()))
             datos_examen = diccionario_pruebas[prueba_sel]
             
-        # Determinar dinámicamente el índice del grado de este examen para autoseleccionarlo
         grado_predeterminado = str(datos_examen.get('grado', '')).upper().strip()
         idx_grado_auto = 0
         if grado_predeterminado in grados_existentes:
             idx_grado_auto = grados_existentes.index(grado_predeterminado)
 
         with c2:
-            # 🔄 CASILLA DESPLEGABLE RESTAURADA PARA ESTUDIANTE
             estudiante_sel = st.selectbox("👤 NOMBRE COMPLETO DEL ESTUDIANTE:", opciones_estudiantes, index=0)
             nombre_alumno = ""
             if estudiante_sel == "[+ REGISTRAR NUEVO ESTUDIANTE...]":
@@ -130,7 +128,6 @@ def ejecutar():
             else:
                 nombre_alumno = estudiante_sel
 
-            # 🔄 CASILLA DESPLEGABLE RESTAURADA PARA GRADO (Con auto-enfoque inteligente)
             grado_sel = st.selectbox("👥 CURSO / GRADO DEL ALUMNO:", opciones_grados, index=idx_grado_auto)
             curso_alumno = ""
             if grado_sel == "[+ REGISTRAR NUEVO CURSO/GRADO...]":
@@ -262,6 +259,9 @@ def ejecutar():
                             supabase.table("respuestas_estudiantes").insert(payload_nota).execute()
                             st.success(f"🎯 ¡IMPACTO PERFECTO! Calificación de '{nombre_alumno}' cargada exitosamente. Sabana actualizada.")
                             st.balloons()
-                            st.rerun() # Fuerza la recarga para que el nuevo alumno figure en la lista desplegable de inmediato
+                            st.rerun() 
                         except Exception as e:
                             st.error(f"🚨 Falla en el volcado de transacciones: {e}")
+
+if __name__ == "__main__":
+    pass
