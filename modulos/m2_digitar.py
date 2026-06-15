@@ -48,11 +48,12 @@ def ejecutar():
             res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
             pruebas = res_pruebas.data
             
-            # Descarga de alumnos optimizada en ráfagas de 1000
+            # Descarga de alumnos optimizada en ráfagas con las MAYÚSCULAS reales de tu búnker
             estudiantes_base = []
             offset, chunk_size = 0, 1000
             while True:
-                resultado = supabase.table("data_estudiantes").select('nombre_completo, grado').range(offset, offset + chunk_size - 1).execute()
+                # 🛠️ CORRECCIÓN AQUÍ: Se cambia a 'Nombre_Completo, Grado' según la exigencia de la base de datos
+                resultado = supabase.table("data_estudiantes").select('Nombre_Completo, Grado').range(offset, offset + chunk_size - 1).execute()
                 if not resultado.data: break
                 estudiantes_base.extend(resultado.data)
                 if len(resultado.data) < chunk_size: break
@@ -66,19 +67,16 @@ def ejecutar():
         return
 
     # =================================================================
-    # 🎯 FIX MAESTRO: LLAVES ÚNICAS PARA QUE APAREZCAN TODAS LAS MATERIAS
+    # 🎯 LLAVES ÚNICAS PARA EL SELECTOR DE EXÁMENES
     # =================================================================
-    # Agregamos el grado y un consecutivo invisible al nombre para romper cualquier colisión en el diccionario.
     diccionario_pruebas = {}
     for idx, p in enumerate(pruebas):
         nombre_raw = str(p.get('nombre', 'SIN NOMBRE')).strip().upper()
         materia_raw = str(p.get('materia', 'SIN MATERIA')).strip().upper()
         grado_raw = str(p.get('grado', 'GENERAL')).strip().upper()
         
-        # Etiqueta única ultra-descriptiva para el Selector
         etiqueta_selector = f"{nombre_raw} ({grado_raw}) - {materia_raw}"
         
-        # Si por alguna razón extrema se repite, le añadimos el índice de seguridad
         if etiqueta_selector in diccionario_pruebas:
             etiqueta_selector = f"{etiqueta_selector} #{idx+1}"
             
@@ -106,11 +104,11 @@ def ejecutar():
                 puntaje_maximo = 5.0
 
         with c2:
-            # Filtrar alumnos del grado objetivo de la prueba seleccionada automáticamente
             grado_objetivo_prueba = str(datos_prueba.get('grado', '')).strip().upper()
             
             if estudiantes_base:
                 df_est = pd.DataFrame(estudiantes_base)
+                # Normalizamos las columnas a minúsculas localmente en Pandas para la lógica interna
                 df_est.columns = [col.lower() for col in df_est.columns]
                 
                 # Filtrado inteligente por el grado del examen
@@ -141,12 +139,10 @@ def ejecutar():
             step=1
         )
         
-        # Fórmulas de conversión matemática directa de Génesis
         porcentaje_rendimiento = (aciertos / max_preguntas) * 100 if max_preguntas > 0 else 0.0
         nota_proyectada = (aciertos / max_preguntas) * puntaje_maximo if max_preguntas > 0 else 0.0
 
     with cc2:
-        # HUD dinámico de alto contraste idéntico al de tu pantalla
         st.markdown(f"""
             <div class="hud-digitar">
                 <div style="display: flex; justify-content: space-around;">
@@ -170,13 +166,13 @@ def ejecutar():
             st.error("❌ Operación denegada: No se puede asignar notas a un registro de matrícula vacío.")
             return
 
-        # Empaquetamos la firma unificada para las sábanas de notas: "NOMBRE (GRADO)"
         firma_estudiante = f"{alumno_sel} ({grado_objetivo_prueba})"
         id_prueba_master = datos_prueba.get("id_prueba") or datos_prueba.get("id")
 
+        # Payload limpio de inyección con nombres de celdas estándar de notas
         payload_nota = {
             "id_prueba": id_prueba_master,
-            "estudiante": signature_estudiante if 'signature_estudiante' in locals() else firma_estudiante,
+            "estudiante": firma_estudiante,
             "puntaje_obtenido": round(nota_proyectada, 2),
             "puntaje_maximo": puntaje_maximo,
             "porcentaje": round(porcentaje_rendimiento, 2)
