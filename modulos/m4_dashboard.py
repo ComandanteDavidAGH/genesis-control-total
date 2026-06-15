@@ -13,7 +13,7 @@ def iniciar_conexion():
     return create_client(url, key)
 
 def ejecutar():
-    # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN)
+    # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN) - Respetada
     st.markdown("""
         <style>
         .titulo-dash { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
@@ -80,7 +80,7 @@ def ejecutar():
         for _, fila in df_notas.iterrows():
             estudiante_str = str(fila.get('estudiante', 'ALUMNO ANÓNIMO'))
             
-            # Algoritmo de extracción para separar "Nombre Alumno" y "Curso"
+            # Algoritmo de extracción para separar "Nombre Alumno" y "Curso" - Respetado
             nombre_final = estudiante_str
             curso_final = "SIN CURSO"
             if "(" in estudiante_str and ")" in estudiante_str:
@@ -88,11 +88,28 @@ def ejecutar():
                 nombre_final = parts[0].strip()
                 curso_final = parts[1].replace(")", "").strip()
 
-            pct = float(fila.get('porcentaje', 0.0))
-            nota = float(fila.get('puntaje_obtenido', 0.0))
-            max_p = float(fila.get('puntaje_maximo', 5.0))
+            # =================================================================
+            # 💉 CIRUGÍA LÁSER APLICADA AQUÍ (Sustitución de las 3 líneas críticas)
+            # =================================================================
+            # Instalamos paracaídas para evitar float(None).
             
-            # Clasificación de rangos oficiales ZipGrade/Institucionales
+            # 1. Porcentaje Blindado
+            raw_pct = fila.get('porcentaje')
+            pct = float(raw_pct) if raw_pct is not None else 0.0
+            
+            # 2. Nota Lograda Blindada
+            raw_nota = fila.get('puntaje_obtenido')
+            nota = float(raw_nota) if raw_nota is not None else 0.0
+            
+            # 3. Nota Máxima Blindada
+            raw_max_p = fila.get('puntaje_maximo')
+            max_p = float(raw_max_p) if raw_max_p is not None else 5.0
+            
+            # =================================================================
+            # 🚫 FIN DE LA CIRUGÍA LÁSER
+            # =================================================================
+            
+            # Clasificación de rangos oficiales - Respetada
             if pct < 60.0:
                 nivel = "Bajo (<60%)"
                 estado = "REPROBADO ❌"
@@ -123,7 +140,7 @@ def ejecutar():
         df_informe_limpio = pd.DataFrame(filas_limpias).sort_values(by="ESTUDIANTE MATRÍCULA")
 
     # =================================================================
-    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE (UX SIMÉTRICA)
+    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE (UX SIMÉTRICA) - Respetado
     # =================================================================
     c1, c2 = st.columns([1, 1.2])
     
@@ -141,20 +158,17 @@ def ejecutar():
         })
         st.dataframe(tabla_detalles, use_container_width=True, hide_index=True)
         
-        # 📊 SECCIÓN DE DESCARGAS ANALÍTICAS (FRENTE A ACTIVADO)
+        # 📊 SECCIÓN DE DESCARGAS ANALÍTICAS
         st.markdown("### 📥 Descargar Reportes Masivos:")
         
         if not df_informe_limpio.empty:
-            # 🟢 ENSAMBLADOR BINARIO PARA EXCEL MASTER
             buffer_excel = io.BytesIO()
             with pd.ExcelWriter(buffer_excel, engine='xlsxwriter') as writer:
                 df_informe_limpio.to_excel(writer, sheet_name='Calificaciones', index=False)
-                # Formateo automático de celdas internas de Excel para presentación ejecutiva
                 workbook = writer.book
                 worksheet = writer.sheets['Calificaciones']
                 worksheet.set_column('A:G', 22)
             
-            # 🔵 ENSAMBLADOR BINARIO PARA CSV UNIVERSAL
             buffer_csv = df_informe_limpio.to_csv(index=False).encode('utf-8')
             
             cx1, cx2, cx3 = st.columns(3)
@@ -187,7 +201,7 @@ def ejecutar():
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
     # =================================================================
-    # 📋 SECCIÓN INFERIOR: TABLERO GENERAL DE ASISTENCIA
+    # 📋 SECCIÓN INFERIOR: TABLERO GENERAL DE ASISTENCIA - Respetado
     # =================================================================
     st.markdown("---")
     st.markdown("### 📋 Control de Asistencia y Sabana Escaneada")
