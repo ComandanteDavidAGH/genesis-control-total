@@ -10,6 +10,18 @@ def iniciar_conexion():
     key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
+# =================================================================
+# 🛡️ SENSOR DETECTOR INALÁMBRICO DE COLUMNAS (Anti-Case-Sensitivity)
+# =================================================================
+def buscar_campo(diccionario, nombre_campo, predeterminado=""):
+    if not diccionario:
+        return predeterminado
+    for llave, valor in diccionario.items():
+        if llave.lower() == nombre_campo.lower():
+            if valor is not None and str(valor).strip().lower() not in ['none', 'null', '']:
+                return valor
+    return predeterminado
+
 def ejecutar():
     # 🎨 INJECTION VISUAL (GÉNESIS HIGH-CONTRAST DESIGN) - Conservado al 100%
     st.markdown("""
@@ -48,12 +60,11 @@ def ejecutar():
             res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
             pruebas = res_pruebas.data
             
-            # Descarga de alumnos optimizada en ráfagas con las MAYÚSCULAS reales de tu búnker
+            # Descarga de alumnos optimizada en ráfagas de 1000
             estudiantes_base = []
             offset, chunk_size = 0, 1000
             while True:
-                # 🛠️ CORRECCIÓN AQUÍ: Se cambia a 'Nombre_Completo, Grado' según la exigencia de la base de datos
-                resultado = supabase.table("data_estudiantes").select('Nombre_Completo, Grado').range(offset, offset + chunk_size - 1).execute()
+                resultado = supabase.table("data_estudiantes").select('*').range(offset, offset + chunk_size - 1).execute()
                 if not resultado.data: break
                 estudiantes_base.extend(resultado.data)
                 if len(resultado.data) < chunk_size: break
@@ -67,22 +78,25 @@ def ejecutar():
         return
 
     # =================================================================
-    # 🎯 LLAVES ÚNICAS PARA EL SELECTOR DE EXÁMENES
+    # 🎯 FIX MAESTRO: EXTRACCIÓN INMUNE A MAYÚSCULAS/MINÚSCULAS
     # =================================================================
     diccionario_pruebas = {}
     for idx, p in enumerate(pruebas):
-        nombre_raw = str(p.get('nombre', 'SIN NOMBRE')).strip().upper()
-        materia_raw = str(p.get('materia', 'SIN MATERIA')).strip().upper()
-        grado_raw = str(p.get('grado', 'GENERAL')).strip().upper()
+        nombre_raw = str(buscar_campo(p, 'nombre', 'EXAMEN SIN NOMBRE')).strip().upper()
+        materia_raw = str(buscar_campo(p, 'materia', 'MATERIA')).strip().upper()
+        grado_raw = str(buscar_campo(p, 'grado', 'GENERAL')).strip().upper()
         
-        etiqueta_selector = f"{nombre_raw} ({grado_raw}) - {materia_raw}"
+        # Formato de etiqueta limpio y homogéneo para el selector
+        etiqueta_selector = f"{nombre_raw} - {materia_raw} ({grado_raw})"
         
+        # Rompe colisiones duplicadas inyectando el ID real de la fila
         if etiqueta_selector in diccionario_pruebas:
-            etiqueta_selector = f"{etiqueta_selector} #{idx+1}"
+            id_seguro = p.get('id_prueba', p.get('id', idx))
+            etiqueta_selector = f"{etiqueta_selector} (ID: {id_seguro})"
             
         diccionario_pruebas[etiqueta_selector] = p
 
-    # Despliegue simétrico del formulario en contenedores limpios
+    # Despliegue del formulario en contenedores limpios
     with st.container(border=True):
         c1, c2 = st.columns(2)
         
@@ -90,33 +104,38 @@ def ejecutar():
             prueba_sel = st.selectbox("🎯 EVALUACIÓN CORRESPONDIENTE:", list(diccionario_pruebas.keys()))
             datos_prueba = diccionario_pruebas[prueba_sel]
             
-            # Extraer límites de la evaluación con paracaídas anti-nulls
-            raw_max_preguntas = datos_prueba.get('total_preguntas', 10)
+            # Límites numéricos blindados con el nuevo sensor
+            raw_max_preguntas = buscar_campo(datos_prueba, 'total_preguntas', 10)
             try:
-                max_preguntas = int(raw_max_preguntas) if raw_max_preguntas is not None else 10
+                max_preguntas = int(raw_max_preguntas)
             except:
                 max_preguntas = 10
 
-            raw_puntaje_max = datos_prueba.get('puntaje_maximo', 5.0)
+            raw_puntaje_max = buscar_campo(datos_prueba, 'puntaje_maximo', 5.0)
             try:
-                puntaje_maximo = float(raw_puntaje_max) if raw_puntaje_max is not None else 5.0
+                puntaje_maximo = float(raw_puntaje_max)
             except:
                 puntaje_maximo = 5.0
 
         with c2:
-            grado_objetivo_prueba = str(datos_prueba.get('grado', '')).strip().upper()
+            grado_objetivo_prueba = str(buscar_campo(datos_prueba, 'grado', 'GENERAL')).strip().upper()
             
+            # Filtrado inteligente de estudiantes utilizando el sensor inmune
             if estudiantes_base:
-                df_est = pd.DataFrame(estudiantes_base)
-                # Normalizamos las columnas a minúsculas localmente en Pandas para la lógica interna
-                df_est.columns = [col.lower() for col in df_est.columns]
+                lista_alumnos = []
+                for est in estudiantes_base:
+                    nom_alumno = str(buscar_campo(est, 'nombre_completo')).strip().upper()
+                    grad_alumno = str(buscar_campo(est, 'grado')).strip().upper()
+                    
+                    if grad_alumno == grado_objetivo_prueba or grado_objetivo_prueba in ['GENERAL', 'TODOS', '']:
+                        if nom_alumno:
+                            lista_alumnos.append(nom_alumno)
                 
-                # Filtrado inteligente por el grado del examen
-                df_filtrado = df_est[df_est['grado'].str.upper().str.strip() == grado_objetivo_prueba]
-                if not df_filtrado.empty:
-                    lista_alumnos = sorted(df_filtrado['nombre_completo'].str.upper().unique().tolist())
+                # Paracaídas si no hay alumnos en ese grado específico
+                if not lista_alumnos:
+                    lista_alumnos = sorted(list(set([str(buscar_campo(e, 'nombre_completo')).strip().upper() for e in estudiantes_base if buscar_campo(e, 'nombre_completo')])))
                 else:
-                    lista_alumnos = sorted(df_est['nombre_completo'].str.upper().unique().tolist())
+                    lista_alumnos = sorted(list(set(lista_alumnos)))
             else:
                 lista_alumnos = ["NO HAY ALUMNOS REGISTRADOS"]
 
@@ -169,7 +188,6 @@ def ejecutar():
         firma_estudiante = f"{alumno_sel} ({grado_objetivo_prueba})"
         id_prueba_master = datos_prueba.get("id_prueba") or datos_prueba.get("id")
 
-        # Payload limpio de inyección con nombres de celdas estándar de notas
         payload_nota = {
             "id_prueba": id_prueba_master,
             "estudiante": firma_estudiante,
