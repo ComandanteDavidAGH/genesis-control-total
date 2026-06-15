@@ -34,8 +34,7 @@ def ejecutar():
             with st.spinner("Compilando telemetría analítica..."):
                 while True:
                     resultado = supabase.table("data_estudiantes")\
-                        .select('ID_Estudiante, Nombre_Completo, Grado, Grupo')\
-                        .order('ID_Estudiante')\
+                        .select('*')\
                         .range(offset, offset + chunk_size - 1).execute()
                     if not resultado.data: break
                     estudiantes_base.extend(resultado.data)
@@ -46,7 +45,11 @@ def ejecutar():
             return
 
         if estudiantes_base:
-            df_unicos = pd.DataFrame(estudiantes_base).drop_duplicates(subset=["ID_Estudiante"])
+            df = pd.DataFrame(estudiantes_base)
+            df.columns = [c.lower() for c in df.columns]
+            
+            col_id = "id_estudiante" if "id_estudiante" in df.columns else df.columns[0]
+            df_unicos = df.drop_duplicates(subset=[col_id])
             total_alumnos = len(df_unicos)
 
             st.markdown(f"""
