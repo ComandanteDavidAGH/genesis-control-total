@@ -1,190 +1,194 @@
 import streamlit as st
 import pandas as pd
-from supabase import create_client, Client
+from supabase import create_client
 
 # =================================================================
-# 🔒 ENLACE AL BÚNKER DE DATOS CENTRAL
+# 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
     key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
-# =================================================================
-# 👑 INTERFAZ DE DIGITACIÓN MANUAL DE CALIFICACIONES
-# =================================================================
 def ejecutar():
+    # 🎨 INJECTION VISUAL (GÉNESIS HIGH-CONTRAST DESIGN) - Conservado al 100%
     st.markdown("""
         <style>
-        .titulo-digitar { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
-        .subtitulo-digitar { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
-        .hud-digitar {
-            background: linear-gradient(135deg, #0d1b2a 0%, #1e3a8a 100%);
-            padding: 15px; border-radius: 8px; color: white; font-weight: bold;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;
-        }
+        .titulo-nasa { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
+        .subtitulo-nasa { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
         
-        /* Ajuste visual de alto contraste para consistencia de marca */
-        div[data-testid="stForm"] label p, .stSelectbox label p {
-            color: #0d1b2a !important; font-weight: bold !important; text-transform: uppercase; font-size: 12px;
+        /* Contenedores de Formulario Premium */
+        div[data-testid="stMainBlockContainer"] label p {
+            color: #0d1b2a !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase;
         }
         div[data-baseweb="select"] {
             color: #0d1b2a !important; font-weight: bold !important;
         }
+        
+        /* HUD de Rendimiento en Tiempo Real */
+        .hud-digitar {
+            background: linear-gradient(135deg, #0d1b2a 0%, #1a365d 100%);
+            border-radius: 6px; padding: 15px; color: white; text-align: center;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<p class='titulo-digitar'>✍️ Digitación Manual de Notas</p>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitulo-digitar'>Consola de Contingencia para el Registro y Carga Directa de Calificaciones</p>", unsafe_allow_html=True)
+    st.markdown("<p class='titulo-nasa'>📝 Formato de Carga Directa</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     try:
         supabase = iniciar_conexion()
     except Exception:
-        st.error("🚨 Enlace de comunicaciones roto con el búnker de Supabase.")
+        st.error("🚨 Falla en el enlace satelital con Supabase.")
         return
 
-    # 📥 EXTRACCIÓN DE PRUEBAS ACTIVAS DESDE EL BÚNKER
-    with st.spinner("Sincronizando registros de evaluaciones..."):
+    # 📥 DESCARGA COMPLETA DE EXÁMENES Y MATRÍCULAS
+    with st.spinner("Sincronizando banco de evaluaciones maestros..."):
         try:
             res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
             pruebas = res_pruebas.data
+            
+            # Descarga de alumnos optimizada en ráfagas de 1000
+            estudiantes_base = []
+            offset, chunk_size = 0, 1000
+            while True:
+                resultado = supabase.table("data_estudiantes").select('nombre_completo, grado').range(offset, offset + chunk_size - 1).execute()
+                if not resultado.data: break
+                estudiantes_base.extend(resultado.data)
+                if len(resultado.data) < chunk_size: break
+                offset += chunk_size
         except Exception as e:
-            st.error(f"Error al leer sábanas de configuración: {e}")
+            st.error(f"🚨 Error de lectura en la base de datos: {e}")
             return
 
     if not pruebas:
-        st.info("📭 No hay exámenes registrados en el sistema. Vaya al Módulo 2 para crear una prueba.")
+        st.info("📭 No hay evaluaciones registradas en el sistema.")
         return
 
-    # 📡 BANCO DE MEMORIA HISTÓRICA PARA DESPLEGABLES
-    grados_existentes = ["SEXTO A", "SÉPTIMO A", "OCTAVO A", "NOVENO A", "DÉCIMO A", "ONCE A"]
-    estudiantes_existentes = ["JUAN PÉREZ", "MARÍA RODRÍGUEZ", "CARLOS GÓMEZ"]
-
-    try:
-        if pruebas:
-            g_list = sorted(list(set([str(p['grado']).upper().strip() for p in pruebas if p.get('grado') and str(p['grado']).strip() != 'None'])))
-            if g_list: grados_existentes = g_list
-            
-        res_est = supabase.table("respuestas_estudiantes").select("estudiante").execute()
-        if res_est.data:
-            e_list = []
-            for d in res_est.data:
-                est = str(d.get('estudiante', '')).upper().strip()
-                if "(" in est:  
-                    est = est.split("(")[0].strip()
-                if est and est != "NONE" and est != "NULL":
-                    e_list.append(est)
-            e_list = sorted(list(set(e_list)))
-            if e_list: estudiantes_existentes = e_list
-    except Exception:
-        pass
-
-    opciones_estudiantes = estudiantes_existentes + ["[+ REGISTRAR NUEVO ESTUDIANTE...]"]
-    opciones_grados = grados_existentes + ["[+ REGISTRAR NUEVO CURSO/GRADO...]"]
-
-    diccionario_pruebas = {f"{p.get('nombre', 'SIN NOMBRE')} - {p.get('materia', 'SIN MATERIA')}".upper(): p for p in pruebas}
-
     # =================================================================
-    # 📝 FORMULARIO DE INYECCIÓN MANUAL
+    # 🎯 FIX MAESTRO: LLAVES ÚNICAS PARA QUE APAREZCAN TODAS LAS MATERIAS
     # =================================================================
-    with st.form("formulario_digitacion", clear_on_submit=False):
-        st.markdown("### 📋 Formato de Carga Directa")
+    # Agregamos el grado y un consecutivo invisible al nombre para romper cualquier colisión en el diccionario.
+    diccionario_pruebas = {}
+    for idx, p in enumerate(pruebas):
+        nombre_raw = str(p.get('nombre', 'SIN NOMBRE')).strip().upper()
+        materia_raw = str(p.get('materia', 'SIN MATERIA')).strip().upper()
+        grado_raw = str(p.get('grado', 'GENERAL')).strip().upper()
         
+        # Etiqueta única ultra-descriptiva para el Selector
+        etiqueta_selector = f"{nombre_raw} ({grado_raw}) - {materia_raw}"
+        
+        # Si por alguna razón extrema se repite, le añadimos el índice de seguridad
+        if etiqueta_selector in diccionario_pruebas:
+            etiqueta_selector = f"{etiqueta_selector} #{idx+1}"
+            
+        diccionario_pruebas[etiqueta_selector] = p
+
+    # Despliegue simétrico del formulario en contenedores limpios
+    with st.container(border=True):
         c1, c2 = st.columns(2)
+        
         with c1:
             prueba_sel = st.selectbox("🎯 EVALUACIÓN CORRESPONDIENTE:", list(diccionario_pruebas.keys()))
-            datos_examen = diccionario_pruebas[prueba_sel]
+            datos_prueba = diccionario_pruebas[prueba_sel]
             
-            grado_predeterminado = str(datos_examen.get('grado', '')).upper().strip()
-            idx_grado_auto = 0
-            if grado_predeterminado in grados_existentes:
-                idx_grado_auto = grados_existentes.index(grado_predeterminado)
-                
-            # Extraer nota tope y total preguntas permitidas
-            raw_puntaje_maximo = datos_examen.get('puntaje_maximo')
+            # Extraer límites de la evaluación con paracaídas anti-nulls
+            raw_max_preguntas = datos_prueba.get('total_preguntas', 10)
             try:
-                nota_maxima_posible = float(raw_puntaje_maximo) if raw_puntaje_maximo is not None else 5.0
-            except (ValueError, TypeError):
-                nota_maxima_posible = 5.0
+                max_preguntas = int(raw_max_preguntas) if raw_max_preguntas is not None else 10
+            except:
+                max_preguntas = 10
 
-            raw_total_preguntas = datos_examen.get('total_preguntas')
+            raw_puntaje_max = datos_prueba.get('puntaje_maximo', 5.0)
             try:
-                total_preguntas = int(raw_total_preguntas) if raw_total_preguntas is not None else 20
-            except (ValueError, TypeError):
-                total_preguntas = 20
+                puntaje_maximo = float(raw_puntaje_max) if raw_puntaje_max is not None else 5.0
+            except:
+                puntaje_maximo = 5.0
 
         with c2:
-            estudiante_sel = st.selectbox("👤 NOMBRE DEL ESTUDIANTE:", opciones_estudiantes, index=0)
-            nombre_alumno = ""
-            if estudiante_sel == "[+ REGISTRAR NUEVO ESTUDIANTE...]":
-                nombre_alumno = st.text_input("✍️ Escriba el nombre del nuevo Estudiante:").strip().upper()
-            else:
-                nombre_alumno = estudiante_sel
-
-            grado_sel = st.selectbox("👥 CURSO / GRADO:", opciones_grados, index=idx_grado_auto)
-            curso_alumno = ""
-            if grado_sel == "[+ REGISTRAR NUEVO CURSO/GRADO...]":
-                curso_alumno = st.text_input("✍️ Escriba el nombre del nuevo Curso/Grado:").strip().upper()
-            else:
-                curso_alumno = grado_sel
-
-        st.markdown("---")
-        st.markdown("### 🧮 Entrada de Aciertos Reales")
-        
-        cx1, cx2 = st.columns(2)
-        with cx1:
-            # 🔄 UPGRADE: Ahora el docente solo introduce cuántas preguntas buenas sacó el alumno
-            aciertos_ingresados = st.number_input(f"✍️ CANTIDAD DE RESPUESTAS CORRECTAS (Máximo del Examen: {total_preguntas}):", min_value=0, max_value=total_preguntas, value=0, step=1)
-        with cx2:
-            # El sistema calcula de forma limpia la nota decimal y el rendimiento
-            porcentaje_efectividad = (aciertos_ingresados / total_preguntas) * 100 if total_preguntas > 0 else 0
-            nota_calculada = (aciertos_ingresados / total_preguntas) * nota_maxima_posible if total_preguntas > 0 else 0
+            # Filtrar alumnos del grado objetivo de la prueba seleccionada automáticamente
+            grado_objetivo_prueba = str(datos_prueba.get('grado', '')).strip().upper()
             
-            st.markdown(f"""
-                <div class="hud-digitar">
-                    <div style="display: flex; justify-content: space-around; align-items: center;">
-                        <div>
-                            <p style="margin:0; font-size:11px; color:#d4af37; text-transform:uppercase;">Rendimiento</p>
-                            <p style="margin:2px 0 0 0; font-size:22px; color:#00ff66;">{porcentaje_efectividad:.1f}%</p>
-                        </div>
-                        <div style="border-left: 2px solid rgba(255,255,255,0.2); height: 35px;"></div>
-                        <div>
-                            <p style="margin:0; font-size:11px; color:#d4af37; text-transform:uppercase;">Nota Proyectada</p>
-                            <p style="margin:2px 0 0 0; font-size:22px; color:#00ff66;">{nota_calculada:.2f} / {nota_maxima_posible}</p>
-                        </div>
+            if estudiantes_base:
+                df_est = pd.DataFrame(estudiantes_base)
+                df_est.columns = [col.lower() for col in df_est.columns]
+                
+                # Filtrado inteligente por el grado del examen
+                df_filtrado = df_est[df_est['grado'].str.upper().str.strip() == grado_objetivo_prueba]
+                if not df_filtrado.empty:
+                    lista_alumnos = sorted(df_filtrado['nombre_completo'].str.upper().unique().tolist())
+                else:
+                    lista_alumnos = sorted(df_est['nombre_completo'].str.upper().unique().tolist())
+            else:
+                lista_alumnos = ["NO HAY ALUMNOS REGISTRADOS"]
+
+            alumno_sel = st.selectbox("👤 NOMBRE DEL ESTUDIANTE:", lista_alumnos)
+            st.selectbox("👥 CURSO / GRADO:", [grado_objetivo_prueba], disabled=True)
+
+    # =================================================================
+    # 🧮 PANEL DE CONTEO DE ACIERTOS Y CÓMPUTO AUTOMÁTICO
+    # =================================================================
+    st.markdown("### 🎮 Entrada de Aciertos Reales")
+    
+    cc1, cc2 = st.columns([1.5, 1])
+    
+    with cc1:
+        aciertos = st.number_input(
+            f"✍️ CANTIDAD DE RESPUESTAS CORRECTAS (MÁXIMO DEL EXAMEN: {max_preguntas}):",
+            min_value=0,
+            max_value=max_preguntas,
+            value=0,
+            step=1
+        )
+        
+        # Fórmulas de conversión matemática directa de Génesis
+        porcentaje_rendimiento = (aciertos / max_preguntas) * 100 if max_preguntas > 0 else 0.0
+        nota_proyectada = (aciertos / max_preguntas) * puntaje_maximo if max_preguntas > 0 else 0.0
+
+    with cc2:
+        # HUD dinámico de alto contraste idéntico al de tu pantalla
+        st.markdown(f"""
+            <div class="hud-digitar">
+                <div style="display: flex; justify-content: space-around;">
+                    <div>
+                        <p style="margin:0; font-size:11px; color:#d4af37; font-weight:bold;">RENDIMIENTO</p>
+                        <p style="margin:5px 0 0 0; font-size:24px; font-family:'Arial Black';">{porcentaje_rendimiento:.1f}%</p>
+                    </div>
+                    <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left:15px;">
+                        <p style="margin:0; font-size:11px; color:#d4af37; font-weight:bold;">NOTA PROYECTADA</p>
+                        <p style="margin:5px 0 0 0; font-size:24px; font-family:'Arial Black'; color:#00ff66;">{nota_proyectada:.2f} / {puntaje_maximo:.1f}</p>
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
+            </div>
+        """, unsafe_allow_html=True)
 
-        boton_transmitir = st.form_submit_button("🚀 INYECTAR CALIFICACIÓN AL BÚNKER DE DATOS", use_container_width=True)
+    st.markdown("---")
+    boton_inyectar = st.button("🚀 INYECTAR CALIFICACIÓN AL BÚNKER DE DATOS", use_container_width=True, type="primary")
 
-    # =================================================================
-    # 💾 VOLCADO TRANSACCIONAL A SUPABASE
-    # =================================================================
-    if boton_transmitir:
-        if not nombre_alumno or not curso_alumno:
-            st.error("❌ Operación rechazada: La identidad del alumno y el curso son credenciales obligatorias.")
-        else:
-            cadena_estudiante_completa = f"{nombre_alumno} ({curso_alumno})"
-            id_prueba_activa = datos_examen.get("id_prueba") or datos_examen.get("id")
+    if boton_inyectar:
+        if alumno_sel == "NO HAY ALUMNOS REGISTRADOS":
+            st.error("❌ Operación denegada: No se puede asignar notas a un registro de matrícula vacío.")
+            return
 
-            payload_nota = {
-                "id_prueba": id_prueba_activa,
-                "estudiante": cadena_estudiante_completa,
-                "porcentaje": round(porcentaje_efectividad, 2),
-                "puntaje_obtenido": round(nota_calculada, 2), # Se inyecta la nota limpia calculada por el software
-                "puntaje_maximo": nota_maxima_posible
-            }
+        # Empaquetamos la firma unificada para las sábanas de notas: "NOMBRE (GRADO)"
+        firma_estudiante = f"{alumno_sel} ({grado_objetivo_prueba})"
+        id_prueba_master = datos_prueba.get("id_prueba") or datos_prueba.get("id")
 
-            with st.spinner("Sincronizando paquete de datos con Supabase..."):
-                try:
-                    supabase.table("respuestas_estudiantes").insert(payload_nota).execute()
-                    st.success(f"🎯 ¡REGISTRO EXITOSO! La calificación de '{nombre_alumno}' fue indexada de forma limpia. Sábana actualizada.")
-                    st.balloons()
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"🚨 Falla en el volcado de transacciones manuales: {e}")
+        payload_nota = {
+            "id_prueba": id_prueba_master,
+            "estudiante": signature_estudiante if 'signature_estudiante' in locals() else firma_estudiante,
+            "puntaje_obtenido": round(nota_proyectada, 2),
+            "puntaje_maximo": puntaje_maximo,
+            "porcentaje": round(porcentaje_rendimiento, 2)
+        }
+
+        with st.spinner("Inyectando registro de calificación en caliente..."):
+            try:
+                supabase.table("respuestas_estudiantes").insert(payload_nota).execute()
+                st.success(f"🎯 ¡IMPACTO EXITOSO! Calificación registrada para {alumno_sel} en {prueba_sel}.")
+                st.balloons()
+            except Exception as error_db:
+                st.error(f"🚨 Error en el volcado transaccional: {error_db}")
 
 if __name__ == "__main__":
     pass
