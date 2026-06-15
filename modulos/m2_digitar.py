@@ -21,7 +21,7 @@ def ejecutar():
         .hud-digitar {
             background: linear-gradient(135deg, #0d1b2a 0%, #1e3a8a 100%);
             padding: 15px; border-radius: 8px; color: white; font-weight: bold;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px; text-align: center;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;
         }
         
         /* Ajuste visual de alto contraste para consistencia de marca */
@@ -35,7 +35,7 @@ def ejecutar():
     """, unsafe_allow_html=True)
 
     st.markdown("<p class='titulo-digitar'>✍️ Digitación Manual de Notas</p>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitulo-digitar'>Consala de Contingencia para el Registro y Carga Directa de Calificaciones</p>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitulo-digitar'>Consola de Contingencia para el Registro y Carga Directa de Calificaciones</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     try:
@@ -96,21 +96,25 @@ def ejecutar():
             prueba_sel = st.selectbox("🎯 EVALUACIÓN CORRESPONDIENTE:", list(diccionario_pruebas.keys()))
             datos_examen = diccionario_pruebas[prueba_sel]
             
-            # Auto-enfoque dinámico del curso según el examen
             grado_predeterminado = str(datos_examen.get('grado', '')).upper().strip()
             idx_grado_auto = 0
             if grado_predeterminado in grados_existentes:
                 idx_grado_auto = grados_existentes.index(grado_predeterminado)
                 
-            # Extraer nota tope permitida
+            # Extraer nota tope y total preguntas permitidas
             raw_puntaje_maximo = datos_examen.get('puntaje_maximo')
             try:
                 nota_maxima_posible = float(raw_puntaje_maximo) if raw_puntaje_maximo is not None else 5.0
             except (ValueError, TypeError):
                 nota_maxima_posible = 5.0
 
+            raw_total_preguntas = datos_examen.get('total_preguntas')
+            try:
+                total_preguntas = int(raw_total_preguntas) if raw_total_preguntas is not None else 20
+            except (ValueError, TypeError):
+                total_preguntas = 20
+
         with c2:
-            # Desplegable de Estudiante
             estudiante_sel = st.selectbox("👤 NOMBRE DEL ESTUDIANTE:", opciones_estudiantes, index=0)
             nombre_alumno = ""
             if estudiante_sel == "[+ REGISTRAR NUEVO ESTUDIANTE...]":
@@ -118,7 +122,6 @@ def ejecutar():
             else:
                 nombre_alumno = estudiante_sel
 
-            # Desplegable de Grado
             grado_sel = st.selectbox("👥 CURSO / GRADO:", opciones_grados, index=idx_grado_auto)
             curso_alumno = ""
             if grado_sel == "[+ REGISTRAR NUEVO CURSO/GRADO...]":
@@ -127,19 +130,30 @@ def ejecutar():
                 curso_alumno = grado_sel
 
         st.markdown("---")
-        st.markdown("### 🧮 Calificación Numérica")
+        st.markdown("### 🧮 Entrada de Aciertos Reales")
         
         cx1, cx2 = st.columns(2)
         with cx1:
-            # 🛡️ BLINDAJE TOPE: El valor máximo está amarrado dinámicamente a la nota del examen
-            nota_ingresada = st.number_input(f"💯 NOTA OBTENIDA (Máximo Permitido: {nota_maxima_posible}):", min_value=0.0, max_value=nota_maxima_posible, value=0.0, step=0.1)
+            # 🔄 UPGRADE: Ahora el docente solo introduce cuántas preguntas buenas sacó el alumno
+            aciertos_ingresados = st.number_input(f"✍️ CANTIDAD DE RESPUESTAS CORRECTAS (Máximo del Examen: {total_preguntas}):", min_value=0, max_value=total_preguntas, value=0, step=1)
         with cx2:
-            # Cálculo de rendimiento proyectado en vivo
-            porcentaje_efectividad = (nota_ingresada / nota_maxima_posible) * 100 if nota_maxima_posible > 0 else 0
+            # El sistema calcula de forma limpia la nota decimal y el rendimiento
+            porcentaje_efectividad = (aciertos_ingresados / total_preguntas) * 100 if total_preguntas > 0 else 0
+            nota_calculada = (aciertos_ingresados / total_preguntas) * nota_maxima_posible if total_preguntas > 0 else 0
+            
             st.markdown(f"""
                 <div class="hud-digitar">
-                    <p style="margin:0; font-size:11px; color:#d4af37; text-transform:uppercase;">Rendimiento Calculado</p>
-                    <p style="margin:5px 0 0 0; font-size:24px; color:#00ff66;">{porcentaje_efectividad:.1f}%</p>
+                    <div style="display: flex; justify-content: space-around; align-items: center;">
+                        <div>
+                            <p style="margin:0; font-size:11px; color:#d4af37; text-transform:uppercase;">Rendimiento</p>
+                            <p style="margin:2px 0 0 0; font-size:22px; color:#00ff66;">{porcentaje_efectividad:.1f}%</p>
+                        </div>
+                        <div style="border-left: 2px solid rgba(255,255,255,0.2); height: 35px;"></div>
+                        <div>
+                            <p style="margin:0; font-size:11px; color:#d4af37; text-transform:uppercase;">Nota Proyectada</p>
+                            <p style="margin:2px 0 0 0; font-size:22px; color:#00ff66;">{nota_calculada:.2f} / {nota_maxima_posible}</p>
+                        </div>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -159,14 +173,14 @@ def ejecutar():
                 "id_prueba": id_prueba_activa,
                 "estudiante": cadena_estudiante_completa,
                 "porcentaje": round(porcentaje_efectividad, 2),
-                "puntaje_obtenido": round(nota_ingresada, 2),
+                "puntaje_obtenido": round(nota_calculada, 2), # Se inyecta la nota limpia calculada por el software
                 "puntaje_maximo": nota_maxima_posible
             }
 
             with st.spinner("Sincronizando paquete de datos con Supabase..."):
                 try:
                     supabase.table("respuestas_estudiantes").insert(payload_nota).execute()
-                    st.success(f"🎯 ¡REGISTRO EXITOSO! La calificación de '{nombre_alumno}' fue indexada. Sábana actualizada.")
+                    st.success(f"🎯 ¡REGISTRO EXITOSO! La calificación de '{nombre_alumno}' fue indexada de forma limpia. Sábana actualizada.")
                     st.balloons()
                     st.rerun()
                 except Exception as e:
