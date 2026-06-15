@@ -12,7 +12,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 # =================================================================
-# 🔌 CONEXIÓN SEGURA AL CENTRO DE DATOS (REGLA DE ORO: INTACTO)
+# 🔌 CONEXIÓN SEGURA AL CENTRO DE DATOS (Sincronizada)
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].replace('"', '').replace("'", "").strip()
@@ -73,7 +73,7 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
     respuestas_alumno = datos_estudiante['respuestas_json']
     temas_a_reforzar = set()
     
-    # Tolerancia a mapeos estructurados como strings o diccionarios
+    # Tolerancia a mapeos estructurados como strings o listas
     claves_lista = []
     if isinstance(llave_maestra, str):
         claves_lista = [{"Pregunta": f"Pregunta {i+1}", "Respuesta Correcta": v.strip(), "Tema": "Concepto General"} for i, v in enumerate(llave_maestra.split(","))]
@@ -116,7 +116,7 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
     return pdf.output()
 
 # =================================================================
-# 🖥 Seyñor de la Interfaz (Alto impacto visual sin alterar tu código)
+# 🖥️ SECCIÓN DE LA INTERFAZ DE USUARIO
 # =================================================================
 def ejecutar():
     st.markdown("""
@@ -155,11 +155,8 @@ def ejecutar():
                 res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
                 datos_pruebas = res_pruebas.data
 
-                # Mapeo unificado tolerante a nombres de tablas de tu nuevo búnker
-                try:
-                    res_estudiantes = supabase.table("data_estudiantes").select("nombre_completo, grado, grupo").execute()
-                except Exception:
-                    res_estudiantes = supabase.table("estudiantes").select("nombre_completo, clases(nombre_clase)").execute()
+                # ⚡ SOLUCIÓN AL ERROR: Apuntamos directo a 'data_estudiantes' para evitar tablas fantasmas
+                res_estudiantes = supabase.table("data_estudiantes").select("*").execute()
                 datos_estudiantes = res_estudiantes.data
             except Exception as e:
                 st.error(f"💥 Error en la sincronización de tablas: {e}")
@@ -295,10 +292,17 @@ def ejecutar():
                 st.info("Suba hojas al escáner para activar el control.")
             else:
                 estudiantes_presentes = df_filtrado["estudiante"].dropna().astype(str).tolist()
+                
+                # Normalizamos las llaves de la respuesta de estudiantes a minúsculas
+                datos_est_limpios = []
+                if datos_estudiantes:
+                    for e in datos_estudiantes:
+                        datos_est_limpios.append({k.lower(): v for k, v in e.items()})
+
                 alumnos_pendientes = []
-                for e in datos_estudiantes:
+                for e in datos_est_limpios:
                     nom = e.get("nombre_completo", "")
-                    gr = e.get("grado", e.get("clases", {}).get("nombre_clase", "Sin Curso") if isinstance(e.get("clases"), dict) else "Sin Curso")
+                    gr = e.get("grado", "Sin Grado")
                     gp = e.get("grupo", "")
                     cur = f"{gr}{gp}".strip()
                     if f"{nom} ({cur})" not in estudiantes_presentes:
