@@ -45,7 +45,14 @@ def ejecutar():
             padding: 15px; border-radius: 8px; color: white; font-weight: bold;
             box-shadow: 0px 4px 10px rgba(0,0,0,0.2); margin-bottom: 20px;
         }
-        div[data-testid="stSidebarUserBlock"] p { color: #0d1b2a !important; }
+        
+        /* Ajuste visual de alto contraste para formularios */
+        div[data-testid="stForm"] label p, .stSelectbox label p {
+            color: #0d1b2a !important; font-weight: bold !important; text-transform: uppercase; font-size: 12px;
+        }
+        div[data-baseweb="select"] {
+            color: #0d1b2a !important; font-weight: bold !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -71,6 +78,34 @@ def ejecutar():
         st.info("📭 No hay exámenes registrados en el sistema. Vaya al Módulo 2 para dar de alta una prueba.")
         return
 
+    # 📡 BÚSQUEDA TÁCTICA DE GRADOS Y ALUMNOS EXISTENTES PARA DESPLEGABLES
+    grados_existentes = ["SEXTO A", "SÉPTIMO A", "OCTAVO A", "NOVENO A", "DÉCIMO A", "ONCE A"]
+    estudiantes_existentes = ["JUAN PÉREZ", "MARÍA RODRÍGUEZ", "CARLOS GÓMEZ"]
+
+    try:
+        # Extraer grados de la tabla de pruebas
+        if pruebas:
+            g_list = sorted(list(set([str(p['grado']).upper().strip() for p in pruebas if p.get('grado') Bag and str(p['grado']).strip() != 'None'])))
+            if g_list: grados_existentes = g_list
+            
+        # Extraer alumnos históricos para evitar digitación repetida
+        res_est = supabase.table("respuestas_estudiantes").select("estudiante").execute()
+        if res_est.data:
+            e_list = []
+            for d in res_est.data:
+                est = str(d.get('estudiante', '')).upper().strip()
+                if "(" in est:  # Limpiamos el sufijo " (CURSO)" para dejar solo el nombre limpio
+                    est = est.split("(")[0].strip()
+                if est and est != "NONE" and est != "NULL":
+                    e_list.append(est)
+            e_list = sorted(list(set(e_list)))
+            if e_list: estudiantes_existentes = e_list
+    except Exception:
+        pass
+
+    opciones_estudiantes = estudiantes_existentes + ["[+ REGISTRAR NUEVO ESTUDIANTE...]"]
+    opciones_grados = grados_existentes + ["[+ REGISTRAR NUEVO CURSO/GRADO...]"]
+
     diccionario_pruebas = {f"{p.get('nombre', 'SIN NOMBRE')} - {p.get('materia', 'SIN MATERIA')}".upper(): p for p in pruebas}
     
     with st.container(border=True):
@@ -79,9 +114,29 @@ def ejecutar():
         with c1:
             prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN A CALIFICAR:", list(diccionario_pruebas.keys()))
             datos_examen = diccionario_pruebas[prueba_sel]
+            
+        # Determinar dinámicamente el índice del grado de este examen para autoseleccionarlo
+        grado_predeterminado = str(datos_examen.get('grado', '')).upper().strip()
+        idx_grado_auto = 0
+        if grado_predeterminado in grados_existentes:
+            idx_grado_auto = grados_existentes.index(grado_predeterminado)
+
         with c2:
-            nombre_alumno = st.text_input("👤 NOMBRE COMPLETO DEL ESTUDIANTE:", placeholder="Ej: JUAN PÉREZ").strip().upper()
-            curso_alumno = st.text_input("👥 CURSO / GRADO DEL ALUMNO:", value=str(datos_examen.get('grado', ''))).strip().upper()
+            # 🔄 CASILLA DESPLEGABLE RESTAURADA PARA ESTUDIANTE
+            estudiante_sel = st.selectbox("👤 NOMBRE COMPLETO DEL ESTUDIANTE:", opciones_estudiantes, index=0)
+            nombre_alumno = ""
+            if estudiante_sel == "[+ REGISTRAR NUEVO ESTUDIANTE...]":
+                nombre_alumno = st.text_input("✍️ Escriba el nombre del nuevo Estudiante:").strip().upper()
+            else:
+                nombre_alumno = estudiante_sel
+
+            # 🔄 CASILLA DESPLEGABLE RESTAURADA PARA GRADO (Con auto-enfoque inteligente)
+            grado_sel = st.selectbox("👥 CURSO / GRADO DEL ALUMNO:", opciones_grados, index=idx_grado_auto)
+            curso_alumno = ""
+            if grado_sel == "[+ REGISTRAR NUEVO CURSO/GRADO...]":
+                curso_alumno = st.text_input("✍️ Escriba el nombre del nuevo Curso/Grado:").strip().upper()
+            else:
+                curso_alumno = grado_sel
 
     # =================================================================
     # 🎯 ALINEACIÓN CON LAS LLAVES REALES DE TU SUPABASE
@@ -94,7 +149,6 @@ def ejecutar():
 
     clave_maestra_lista = str(clave_cruda).split(',')
     
-    # 🛡️ PARACAÍDAS ANTI-NONETYPE (Evita fallas si las celdas de Supabase están en blanco)
     raw_total_preguntas = datos_examen.get('total_preguntas')
     try:
         total_preguntas = int(raw_total_preguntas) if raw_total_preguntas is not None else len(clave_maestra_lista)
@@ -189,10 +243,10 @@ def ejecutar():
             # =================================================================
             st.markdown("---")
             if st.button("🚀 TRANSMITIR NOTA AL BÚNKER CENTRAL DE CALIFICACIONES", use_container_width=True):
-                if not nombre_alumno:
-                    st.error("❌ Operación abortada: Es obligatorio introducir el nombre del estudiante para indexar la matrícula.")
+                if not nombre_alumno or not curso_alumno:
+                    st.error("❌ Operación abortada: Los campos de identificación del alumno y curso no pueden quedar vacíos.")
                 else:
-                    cadena_estudiante_completa = f"{nombre_alumno} ({curso_alumno if curso_alumno else 'GENERAL'})"
+                    cadena_estudiante_completa = f"{nombre_alumno} ({curso_alumno})"
                     id_prueba_activa = datos_examen.get("id_prueba") or datos_examen.get("id")
 
                     payload_nota = {
@@ -208,5 +262,6 @@ def ejecutar():
                             supabase.table("respuestas_estudiantes").insert(payload_nota).execute()
                             st.success(f"🎯 ¡IMPACTO PERFECTO! Calificación de '{nombre_alumno}' cargada exitosamente. Sabana actualizada.")
                             st.balloons()
+                            st.rerun() # Fuerza la recarga para que el nuevo alumno figure en la lista desplegable de inmediato
                         except Exception as e:
                             st.error(f"🚨 Falla en el volcado de transacciones: {e}")
