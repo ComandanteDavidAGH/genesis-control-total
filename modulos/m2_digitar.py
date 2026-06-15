@@ -62,11 +62,10 @@ def ejecutar():
     st.markdown("<p class='titulo-nasa'>✍️ Registro de Calificaciones</p>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # 📥 EXTRACCIÓN GLOBAL DESDE EL BÚNKER DE SUPABASE
+    # 📥 EXTRACCIÓN GLOBAL Y ESTERILIZACIÓN DE DATOS
     try:
         supabase = iniciar_conexion()
-        with st.spinner("Sincronizando coordenadas de la base de datos masiva..."):
-            resultado = supabase.table("data_estudiantes").select('*').execute()
+        resultado = supabase.table("data_estudiantes").select('*').execute()
         
         if not resultado.data:
             st.warning("📭 No hay conexión o la tabla oficial está vacía.")
@@ -80,42 +79,53 @@ def ejecutar():
         col_id = "id_estudiante" if "id_estudiante" in df_base.columns else df_base.columns[0]
         col_nombre = "nombre_completo" if "nombre_completo" in df_base.columns else df_base.columns[1]
 
-        # 🌟 SOLUCIÓN AL ERROR: Eliminamos la limpieza global que borraba alumnos por error.
-        # Extraemos las opciones directamente de la data en bruto para mantener sintonía.
-        grados_reales = sorted(list(df_base[col_grado].dropna().astype(str).unique()), key=lambda x: int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else 0)
-        grupos_reales = sorted(list(df_base[col_grupo].dropna().astype(str).unique()))
+        # ⚡ HIGIENE RADICAL (NASA LEVEL): Eliminamos espacios invisibles que truncan los salones
+        df_base[col_grado] = df_base[col_grado].astype(str).str.strip()
+        df_base[col_grupo] = df_base[col_grupo].astype(str).str.strip().str.upper()
+        df_base[col_nombre] = df_base[col_nombre].astype(str).str.strip()
+
+        # Opciones dinámicas purificadas para los selectores
+        grados_reales = sorted(list(df_base[col_grado].unique()), key=lambda x: int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else 0)
+        grupos_reales = sorted(list(df_base[col_grupo].unique()))
 
     except Exception as e:
         st.error(f"🚨 Falla en la telemetría del búnker: {e}")
         return
 
-    # 🎛️ PANEL DE COORDENADAS ACADÉMICAS CON DATOS REALES
+    # 🎛️ PANEL DE COORDENADAS ACADÉMICAS CON ESTADO INICIAL EN BLANCO
     st.markdown("<h5 style='color: #0d1b2a; font-weight: bold;'>🔍 Parámetros de Calificación</h5>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        grado_sel = st.selectbox("🏫 Grado Detectado:", grados_reales, key="nasa_grado")
+        # 🌟 REGLA DE ORO: index=None fuerza a que el selector inicie vacío con su punto blanco implícito
+        grado_sel = st.selectbox("🏫 Grado Detectado:", grados_reales, index=None, placeholder="Seleccione Grado...", key="nasa_grado")
     with c2:
-        grupo_sel = st.selectbox("🛡️ Grupo Detectado:", grupos_reales, key="nasa_grupo")
+        grupo_sel = st.selectbox("🛡️ Grupo Detectado:", grupos_reales, index=None, placeholder="Seleccione Grupo...", key="nasa_grupo")
     with c3:
-        asignatura_sel = st.selectbox("📚 Asignatura:", ["Matemáticas", "Español", "Ciencias Naturales", "Ciencias Sociales", "Inglés", "Artística", "Educación Física", "Ética", "Informática", "Religión"])
+        asignatura_sel = st.selectbox("📚 Asignatura:", ["Matemáticas", "Español", "Ciencias Naturales", "Ciencias Sociales", "Inglés", "Artística", "Educación Física", "Ética", "Informática", "Religión"], index=None, placeholder="Seleccione Materia...")
     with c4:
-        periodo_sel = st.selectbox("📅 Período:", ["Primer Período", "Segundo Período", "Tercer Período", "Cuarto Período"])
+        periodo_sel = st.selectbox("📅 Período:", ["Primer Período", "Segundo Período", "Tercer Período", "Cuarto Período"], index=None, placeholder="Seleccione Período...")
 
-    # 🗺️ FILTRADO COMPLETO: Primero aislamos el salón real
+    # 🛑 CONTROL DE FLUJO SEGURO: Si falta algún parámetro, la pantalla se queda limpia y elegante
+    if not (grado_sel and grupo_sel and asignatura_sel and periodo_sel):
+        st.markdown("---")
+        st.info("📌 **Consola en Espera:** Seleccione todos los parámetros superiores para desplegar de forma segura la planilla de calificaciones oficiales.")
+        return
+
+    # 🗺️ FILTRADO QUIRÚRGICO DE PRECISIÓN (Data limpia sin espacios)
     df_filtrado = df_base[
-        (df_base[col_grado].astype(str) == grado_sel) & 
-        (df_base[col_grupo].astype(str) == grupo_sel)
+        (df_base[col_grado] == grado_sel) & 
+        (df_base[col_grupo] == grupo_sel)
     ].copy()
     
-    # 🔐 FILTRO ANTI-CLONES LOCAL: Eliminamos duplicados solo si se repite el mismo nombre EN ESTE SALÓN
+    # Filtro anti-clones local por nombre
     df_filtrado = df_filtrado.drop_duplicates(subset=[col_nombre])
     df_filtrado = df_filtrado.sort_values(by=col_nombre)
 
-    # 📊 DESPLEGUE DEL ESCENARIO MATRICIAL COMPLETO
+    # 📊 DESPLIEGUE DEL ESCENARIO MATRICIAL COMPLETO
     if not df_filtrado.empty:
         total_alumnos = len(df_filtrado)
         
-        # Indicadores HUD dinámicos reales
+        # Indicadores HUD dinámicos
         st.markdown(f"""
             <div class="hud-nasa-container">
                 <div class="hud-nasa-card">
@@ -140,7 +150,7 @@ def ejecutar():
         # Corona de la Matriz Oficial
         st.markdown(f"<div class='barra-matriz-oficial'>Planilla Oficial: {asignatura_sel} - Curso {grado_sel} Grupo {grupo_sel}</div>", unsafe_allow_html=True)
 
-        # Construcción del lienzo limpio con notas en cero
+        # Construcción de la matriz limpia
         planilla_real = pd.DataFrame({
             "ID Estudiante": df_filtrado[col_id],
             "Nombre Completo": df_filtrado[col_nombre],
