@@ -8,10 +8,11 @@ def iniciar_conexion():
     return create_client(url, key)
 
 def ejecutar():
+    # 🎨 ESTILOS CSS LIMPIOS (Inyectados sin envolver ni secuestrar componentes nativos)
     st.markdown("""
         <style>
-        .titulo-genesis { color: #0d1b2a; font-family: 'Arial Black'; font-size: 32px; }
-        .subtitulo-genesis { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; }
+        .titulo-genesis { color: #0d1b2a; font-family: 'Arial Black'; font-size: 32px; margin-bottom: 0px; }
+        .subtitulo-genesis { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
         .hud-container { display: flex; gap: 15px; margin-bottom: 25px; margin-top: 15px; }
         .hud-card {
             flex: 1; background: #ffffff; border-top: 3px solid #0d1b2a;
@@ -19,7 +20,7 @@ def ejecutar():
             box-shadow: 0 10px 25px rgba(13, 27, 42, 0.04);
         }
         .hud-value { font-size: 32px; font-family: 'Arial Black'; font-weight: 900; color: #0d1b2a; }
-        .contenedor-formulario { background: #ffffff; border-radius: 12px; border: 1px solid #e5e5e5; border-top: 4px solid #d4af37; padding: 25px; margin-top: 20px; }
+        .seccion-titulo { color: #0d1b2a; font-weight: bold; margin-top: 25px; margin-bottom: 5px; }
         </style>
     """, unsafe_allow_html=True)
 
@@ -27,7 +28,7 @@ def ejecutar():
     st.markdown("<p class='subtitulo-genesis'>Diseñador de Evaluaciones y Cuestionarios Oficiales</p>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # 🎛️ PANEL DE CONFIGURACIÓN SUPERIOR
+    # 🎛️ PANEL DE CONFIGURACIÓN SUPERIOR NATIVO (A salvo del colapso)
     col1, col2, col3 = st.columns(3)
     with col1:
         titulo_prueba = st.text_input("📝 Título de la Evaluación:", placeholder="Ej: Primer Bimestral")
@@ -44,7 +45,7 @@ def ejecutar():
     with col6:
         nota_maxima = st.number_input("🥇 Nota Máxima Posible:", min_value=1.0, max_value=10.0, value=5.0, step=0.5)
 
-    # 📊 MATRIZ DE RESUMEN AUTOMÁTICO (Las Tarjetas HUD)
+    # 📊 MATRIZ DE RESUMEN AUTOMÁTICO (Tarjetas HUD)
     valor_pregunta = nota_maxima / num_preguntas if num_preguntas > 0 else 0.0
 
     st.markdown(f"""
@@ -64,19 +65,20 @@ def ejecutar():
         </div>
     """, unsafe_allow_html=True)
 
-    # 🛡️ CONSTRUCTOR DINÁMICO DE PREGUNTAS (¡LO QUE NOS COMIMOS ABAJO!)
-    st.markdown("<div class='contenedor-formulario'>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color: #0d1b2a; font-weight: bold; margin-top: 0px;'>📝 DISEÑO DE PREGUNTAS ({materia} - Grado {grado_destino})</h4>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #5c677d; font-size: 13px;'>Despliega cada sección para estructurar los enunciados y las opciones múltiples de respuestas oficiales.</p>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    # Cabecera de la sección de matriz limpia
+    st.markdown(f"<h4 class='seccion-titulo'>📝 DISEÑO DE PREGUNTAS ({materia} - Grado {grado_destino})</h4>", unsafe_allow_html=True)
+    st.caption("Despliega cada sección para estructurar los enunciados y las opciones múltiples de respuestas oficiales.")
 
-    # Almacén temporal para capturar lo que el docente digita
     cuestionario_estructurado = []
 
-    for i in range(1, num_preguntas + 1):
+    # 🛡️ CONSTRUCTOR DINÁMICO PURO (Sin bloques HTML que corrompan el DOM)
+    for i in range(1, int(num_preguntas) + 1):
         with st.expander(f"❓ Pregunta {i} de {num_preguntas} — Configurar Enunciado y Opciones"):
             enunciado = st.text_area(f"Enunciado de la Pregunta {i}:", key=f"enunciado_{i}", placeholder=f"Escribe aquí la pregunta número {i}...")
             
-            st.markdown("<p style='font-size: 12px; font-weight: bold; margin-bottom: 2px; color: #0d1b2a;'>Opciones de Respuesta Multiple:</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #0d1b2a;'>Opciones de Respuesta Múltiple:</p>", unsafe_allow_html=True)
             c1, c2 = st.columns(2)
             with c1:
                 opcion_a = st.text_input(f"A)", key=f"op_a_{i}", placeholder="Opción A")
@@ -99,7 +101,7 @@ def ejecutar():
 
     st.markdown("---")
     
-    # 💾 BOTÓN DE SALVAVIDAS INSTITUCIONAL
+    # 💾 BOTÓN DE REGISTRO SEGURO
     col_btn, _ = st.columns([1, 2])
     with col_btn:
         if st.button("🛡️ Guardar Cuestionario Oficial", use_container_width=True):
@@ -108,11 +110,7 @@ def ejecutar():
             else:
                 with st.spinner("Registrando estructura en el búnker de datos..."):
                     try:
-                        # Aquí puedes conectar a Supabase en el futuro si creas la tabla 'evaluaciones'
-                        # supabase = iniciar_conexion()
                         st.success(f"🏆 ¡Evaluación '{titulo_prueba}' para Grado {grado_destino} guardada con éxito!")
                         st.balloons()
                     except Exception as e:
                         st.error(f"🚨 Error al almacenar cuestionario: {e}")
-                        
-    st.markdown("</div>", unsafe_allow_html=True)
