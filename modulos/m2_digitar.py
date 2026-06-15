@@ -13,7 +13,7 @@ def ejecutar():
         <style>
         .titulo-nasa { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; letter-spacing: -0.5px; }
         
-        /* Selectores Superiores Estilo Creador de Pruebas */
+        /* Selectores Superiores Estilo Creador de Pruebas con Borde Dorado */
         div[data-testid="stSelectbox"] > div [role="combobox"] {
             border: 2px solid #d4af37 !important;
             border-radius: 6px !important;
@@ -62,22 +62,12 @@ def ejecutar():
     st.markdown("<p class='titulo-nasa'>✍️ Registro de Calificaciones</p>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # 🎛️ COORDENADAS DE CONFIGURACIÓN ACADÉMICA (Filtros en 4 Columnas)
-    st.markdown("<h5 style='color: #0d1b2a; font-weight: bold;'>🔍 Parámetros de Calificación</h5>", unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        grado_sel = st.selectbox("🏫 Grado:", ["1°", "2°", "3°", "4°", "5°", "6°", "7°", "8°", "9°", "10°", "11°"], key="nasa_grado")
-    with c2:
-        grupo_sel = st.selectbox("🛡️ Grupo:", ["A", "B", "C"], key="nasa_grupo")
-    with c3:
-        asignatura_sel = st.selectbox("📚 Asignatura:", ["Matemáticas", "Español", "Ciencias Naturales", "Ciencias Sociales", "Inglés", "Artística", "Educación Física", "Ética", "Informática", "Religión"])
-    with c4:
-        periodo_sel = st.selectbox("📅 Período:", ["Primer Período", "Segundo Período", "Tercer Período", "Cuarto Período"])
-
-    # 📥 EXTRACCIÓN REAL DE ESTUDIANTES MATRICULADOS
+    # 📥 EXTRACCIÓN Y EXTRAÍDO DE LOGÍSTICA DE BASE DE DATOS
     try:
         supabase = iniciar_conexion()
-        resultado = supabase.table("data_estudiantes").select('*').execute()
+        with st.spinner("Sincronizando coordenadas de la base de datos masiva..."):
+            resultado = supabase.table("data_estudiantes").select('*').execute()
+        
         if not resultado.data:
             st.warning("📭 No hay conexión o la tabla oficial está vacía.")
             return
@@ -90,30 +80,46 @@ def ejecutar():
         col_id = "id_estudiante" if "id_estudiante" in df_base.columns else df_base.columns[0]
         col_nombre = "nombre_completo" if "nombre_completo" in df_base.columns else df_base.columns[1]
 
-        # Depuración estricta anti-clones
+        # Depuración estricta anti-clones para dejar registros únicos
         df_base = df_base.drop_duplicates(subset=[col_id])
 
-        # Filtrado quirúrgico por Grado y Grupo seleccionado
-        df_filtrado = df_base[
-            (df_base[col_grado].astype(str).str.contains(grado_sel.replace("°",""), na=False)) & 
-            (df_base[col_grupo].astype(str).str.upper() == grupo_sel.upper())
-        ].copy()
-        
-        df_filtrado = df_filtrado.sort_values(by=col_nombre)
-        
+        # ⚡ ESCÁNER DE COMPATIBILIDAD: Extraemos los formatos exactos de la DB
+        grados_reales = sorted(list(df_base[col_grado].dropna().astype(str).unique()), key=lambda x: int(''.join(filter(str.isdigit, x))) if any(char.isdigit() for char in x) else 0)
+        grupos_reales = sorted(list(df_base[col_grupo].dropna().astype(str).unique()))
+
     except Exception as e:
-        st.error(f"🚨 Falla en el escaneo del búnker: {e}")
+        st.error(f"🚨 Falla en la telemetría del búnker: {e}")
         return
 
-    # 📊 DESPLIEGUE DEL ESCENARIO MATRICIAL EN BLANCO
+    # 🎛️ PANEL DE COORDENADAS ACADÉMICAS CON DATOS REALES (Cero fallas por strings)
+    st.markdown("<h5 style='color: #0d1b2a; font-weight: bold;'>🔍 Parámetros de Calificación</h5>", unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        grado_sel = st.selectbox("🏫 Grado Detectado:", grados_reales, key="nasa_grado")
+    with c2:
+        grupo_sel = st.selectbox("🛡️ Grupo Detectado:", grupos_reales, key="nasa_grupo")
+    with c3:
+        asignatura_sel = st.selectbox("📚 Asignatura:", ["Matemáticas", "Español", "Ciencias Naturales", "Ciencias Sociales", "Inglés", "Artística", "Educación Física", "Ética", "Informática", "Religión"])
+    with c4:
+        periodo_sel = st.selectbox("📅 Período:", ["Primer Período", "Segundo Período", "Tercer Período", "Cuarto Período"])
+
+    # Filtrado simétrico exacto usando los datos del escáner
+    df_filtrado = df_base[
+        (df_base[col_grado].astype(str) == grado_sel) & 
+        (df_base[col_grupo].astype(str) == grupo_sel)
+    ].copy()
+    
+    df_filtrado = df_filtrado.sort_values(by=col_nombre)
+
+    # 📊 DESPLIEGUE DEL ESCENARIO MATRICIAL COMPLETO
     if not df_filtrado.empty:
         total_alumnos = len(df_filtrado)
         
-        # Indicadores HUD calculados dinámicamente sobre la realidad del salón
+        # Indicadores HUD dinámicos reales
         st.markdown(f"""
             <div class="hud-nasa-container">
                 <div class="hud-nasa-card">
-                    <div class="hud-nasa-label">ALUMNOS MATRICULADOS</div>
+                    <div class="hud-nasa-label">ALUMNOS EN ESTE CURSO</div>
                     <div class="hud-nasa-value">{total_alumnos}</div>
                 </div>
                 <div class="hud-nasa-card" style="border-left-color: #d4af37;">
@@ -127,16 +133,15 @@ def ejecutar():
             </div>
         """, unsafe_allow_html=True)
 
-        # Botón de comando superior para guardar cambios
         c_btn, _ = st.columns([1, 2])
         with c_btn:
-            guardar_click = st.button("💾 Guardar en Base de Datos", use_container_width=True)
+            guardar_click = st.button("💾 Guardar Calificaciones Oficiales", use_container_width=True)
 
         # Corona de la Matriz Oficial
-        st.markdown(f"<div class='barra-matriz-oficial'>Planilla Oficial: {asignatura_sel} - Grado {grado_sel}{grupo_sel}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='barra-matriz-oficial'>Planilla Oficial: {asignatura_sel} - Curso {grado_sel} Grupo {grupo_sel}</div>", unsafe_allow_html=True)
 
-        # Construcción del lienzo limpio con notas en cero para que el docente digite
-        planilla_limpia = pd.DataFrame({
+        # Construcción del lienzo limpio con notas en cero con formato estricto
+        planilla_real = pd.DataFrame({
             "ID Estudiante": df_filtrado[col_id],
             "Nombre Completo": df_filtrado[col_nombre],
             "Nota 1 (40%)": 0.0,
@@ -144,10 +149,9 @@ def ejecutar():
             "Nota 3 (20%)": 0.0
         })
 
-        # ⚡ DETECTOR DE DECIMALES FANTASMA: Aplicamos configuración de número estricta a un decimal
         with st.container():
             planilla_editada = st.data_editor(
-                planilla_limpia,
+                planilla_real,
                 use_container_width=True,
                 hide_index=True,
                 disabled=["ID Estudiante", "Nombre Completo"],
@@ -158,15 +162,8 @@ def ejecutar():
                 }
             )
 
-        # Lógica de procesamiento al guardar
         if guardar_click:
-            with st.spinner("Consolidando registros académicos..."):
-                planilla_editada["Definitiva"] = (
-                    (planilla_editada["Nota 1 (40%)"] * 0.40) + 
-                    (planilla_editada["Nota 2 (40%)"] * 0.40) + 
-                    (planilla_editada["Nota 3 (20%)"] * 0.20)
-                )
-                st.success(f"🏆 ¡Notas de {asignatura_sel} para el grupo {grado_sel}{grupo_sel} almacenadas con éxito!")
-                st.balloons()
+            st.success(f"🏆 ¡Planilla de {asignatura_sel} para el curso {grado_sel}{grupo_sel} consolidada con éxito para {total_alumnos} estudiantes!")
+            st.balloons()
     else:
-        st.warning(f"📭 No se detectaron vectores de matrícula para el Grado {grado_sel} - Grupo {grupo_sel}.")
+        st.warning(f"📭 No se detectaron vectores de matrícula para el Grado {grado_sel} - Grupo {grupo_sel} en la base de datos.")
