@@ -93,8 +93,19 @@ def ejecutar():
         return
 
     clave_maestra_lista = str(clave_cruda).split(',')
-    total_preguntas = int(datos_examen.get('total_preguntas', len(clave_maestra_lista)))
-    nota_maxima_posible = float(datos_examen.get('puntaje_maximo', 5.0))
+    
+    # 🛡️ PARACAÍDAS ANTI-NONETYPE (Evita fallas si las celdas de Supabase están en blanco)
+    raw_total_preguntas = datos_examen.get('total_preguntas')
+    try:
+        total_preguntas = int(raw_total_preguntas) if raw_total_preguntas is not None else len(clave_maestra_lista)
+    except (ValueError, TypeError):
+        total_preguntas = len(clave_maestra_lista)
+
+    raw_puntaje_maximo = datos_examen.get('puntaje_maximo')
+    try:
+        nota_maxima_posible = float(raw_puntaje_maximo) if raw_puntaje_maximo is not None else 5.0
+    except (ValueError, TypeError):
+        nota_maxima_posible = 5.0
 
     # =================================================================
     # 📸 ÁREA DE CAPTURA - CARGA DE ARCHIVOS IMAGEN
@@ -182,8 +193,6 @@ def ejecutar():
                     st.error("❌ Operación abortada: Es obligatorio introducir el nombre del estudiante para indexar la matrícula.")
                 else:
                     cadena_estudiante_completa = f"{nombre_alumno} ({curso_alumno if curso_alumno else 'GENERAL'})"
-                    
-                    # 📍 CORRECCIÓN: Indexamos usando la columna real 'id_prueba'
                     id_prueba_activa = datos_examen.get("id_prueba") or datos_examen.get("id")
 
                     payload_nota = {
