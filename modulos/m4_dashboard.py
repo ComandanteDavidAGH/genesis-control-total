@@ -12,7 +12,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 # =================================================================
-# 🔒 CONEXIÓN SEGURA AL CENTRO DE DATOS (Sincronizada)
+# 🔒 CONEXIÓN SEGURA AL CENTRO DE DATOS 
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].replace('"', '').replace("'", "").strip()
@@ -34,7 +34,7 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
     pdf = GeneradorPDF()
     pdf.add_page()
     
-    # 1. Cabecera del Estudiante (Ahora con tildes y eñes reales)
+    # 1. Cabecera del Estudiante
     pdf.set_font('Helvetica', 'B', 11)
     pdf.cell(40, 8, 'Estudiante:', 0, 0)
     pdf.set_font('Helvetica', '', 11)
@@ -86,9 +86,9 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
         marcada = str(respuestas_alumno.get(preg, "VACÍA"))
         
         if marcada == correcta:
-            pdf.set_fill_color(220, 255, 220) # Verde clarito si acertó
+            pdf.set_fill_color(220, 255, 220)
         else:
-            pdf.set_fill_color(255, 220, 220) # Rojo clarito si falló
+            pdf.set_fill_color(255, 220, 220)
             temas_a_reforzar.add(tema)
             
         pdf.cell(30, 8, preg.replace("Pregunta ", "P "), 1, 0, 'C', fill=True)
@@ -123,10 +123,14 @@ def ejecutar():
     .titulo-dashboard { color: #0d1b2a; border-bottom: 3px solid #d4af37; padding-bottom: 5px; font-family: 'Arial Black'; }
     .sub-seccion { color: #1b263b; font-family: 'Arial'; margin-top: 25px; border-left: 4px solid #d4af37; padding-left: 10px; }
     
-    button[data-baseweb="tab"] p, div[data-testid="stSelectbox"] label p, div[data-testid="stRadio"] p {
+    /* FIX DE CONTRASTE: Eliminamos la palidez de textos, calendarios y selectores superiores */
+    button[data-baseweb="tab"] p, div[data-testid="stSelectbox"] label p, div[data-testid="stRadio"] p, label[data-testid="stMetricLabel"] p {
         color: #0d1b2a !important; font-weight: 800 !important; text-transform: uppercase; font-size: 13px !important;
     }
-    div[data-baseweb="select"], div[data-testid="stRadio"] label {
+    div[data-testid="stDateInput"] label p {
+        color: #0d1b2a !important; font-weight: 800 !important; text-transform: uppercase; font-size: 13px !important;
+    }
+    div[data-baseweb="select"], div[data-testid="stRadio"] label, div[data-testid="stDateInput"] input {
         color: #0d1b2a !important; font-weight: bold !important;
     }
     </style>
@@ -167,8 +171,6 @@ def ejecutar():
             lista_archivador = []
             for p in datos_pruebas:
                 fecha_p = p.get("created_at", "N/A")[:10] if p.get("created_at") else "N/A"
-                
-                # 🌟 PARACAÍDAS 1: Si el valor en la DB es NULL/None, usa 5.0 de forma segura
                 max_pts = float(p.get("puntaje_maximo") if p.get("puntaje_maximo") is not None else 5.0)
                 
                 lista_archivador.append({
@@ -184,7 +186,13 @@ def ejecutar():
             st.dataframe(df_archivador.drop(columns=["ID"]), use_container_width=True, hide_index=True)
 
             opciones_pruebas = {f"{p['nombre']} - {p['materia']}".strip(): p for p in datos_pruebas}
-            prueba_seleccionada = st.selectbox("🎯 Seleccione el cuestionario que desea inspeccionar en detalle:", list(opciones_pruebas.keys()))
+            
+            # 🌟 MEJORA UX 1: Estructura en columnas con selector de cuestionario y Filtro de Fecha por Calendario
+            c_sel1, c_sel2 = st.columns(2)
+            with c_sel1:
+                prueba_seleccionada = st.selectbox("🎯 Seleccione el cuestionario que desea inspeccionar en detalle:", list(opciones_pruebas.keys()))
+            with c_sel2:
+                filtro_fecha = st.date_input("📅 Filtrar por Fecha (Calendario Interactiva):", value=None, placeholder="Haga clic para abrir el calendario...")
             
             datos_prueba_maestra = opciones_pruebas[prueba_seleccionada]
             id_prueba_target = datos_prueba_maestra.get("id", datos_prueba_maestra.get("id_prueba"))
@@ -195,6 +203,11 @@ def ejecutar():
             if not df_respuestas_base.empty:
                 df_respuestas_base['fecha_formateada'] = pd.to_datetime(df_respuestas_base['created_at']).dt.strftime('%Y-%m-%d')
                 df_filtrado = df_respuestas_base[df_respuestas_base['id_prueba'] == id_prueba_target].copy()
+                
+                # Aplicamos el filtro del calendario dinámicamente si el usuario selecciona una fecha
+                if filtro_fecha:
+                    fecha_busqueda = filtro_fecha.strftime('%Y-%m-%d')
+                    df_filtrado = df_filtrado[df_filtrado['fecha_formateada'] == fecha_busqueda].copy()
             else:
                 df_filtrado = pd.DataFrame()
 
@@ -204,8 +217,6 @@ def ejecutar():
             with col_izq:
                 st.markdown("#### 📝 Detalles de Operación")
                 fecha_evaluacion = df_filtrado['fecha_formateada'].iloc[0] if not df_filtrado.empty else "Sin registros"
-                
-                # 🌟 PARACAÍDAS 2: Evita la caída si la fila seleccionada tiene puntaje nulo
                 max_pts_maestra = float(datos_prueba_maestra.get("puntaje_maximo") if datos_prueba_maestra.get("puntaje_maximo") is not None else 5.0)
 
                 df_detalles_tabla = pd.DataFrame({
@@ -269,12 +280,12 @@ def ejecutar():
                                 st.success(f"🎉 ¡Migrados {registros_migrados} calificaciones!")
                                 st.balloons()
                 else:
-                    st.caption("Faltan datos escaneados para habilitar descargas.")
+                    st.caption("Faltan datos filtrados para habilitar descargas.")
 
             with col_der:
                 st.markdown("#### 📊 Distribución de Puntuaciones")
                 if df_filtrado.empty:
-                    st.info("📭 No hay registros evaluados para este cuestionario.")
+                    st.info("📭 No hay registros evaluados para los filtros seleccionados.")
                 else:
                     df_filtrado["porcentaje"] = pd.to_numeric(df_filtrado["porcentaje"], errors="coerce").fillna(0.0)
                     df_filtrado["Rango"] = df_filtrado["porcentaje"].apply(lambda p: "Bajo (<60%)" if p<60 else "Básico (60-79%)" if p<80 else "Alto (80-89%)" if p<90 else "Superior (≥90%)")
@@ -291,7 +302,7 @@ def ejecutar():
 
             st.markdown("<h3 class='sub-seccion'>🛑 Control de Asistencia</h3>", unsafe_allow_html=True)
             if df_filtrado.empty:
-                st.info("Suba hojas al escáner para activar el control.")
+                st.info("No hay registros en los filtros para cruzar asistencia.")
             else:
                 estudiantes_presentes = df_filtrado["estudiante"].dropna().astype(str).tolist()
                 
@@ -369,7 +380,6 @@ def ejecutar():
                         datos_del_alumno = df_fuente_datos[df_fuente_datos['estudiante'] == alumno_pdf].iloc[0]
                         
                         try:
-                            # 🌟 PARACAÍDAS 3: Garantiza que la exportación individual herede el puntaje seguro
                             pdf_bytes = ensamblar_pdf(datos_del_alumno, llave_maestra, datos_prueba_maestra['nombre'])
                             st.download_button(
                                 label="⬇️ Descargar PDF",
@@ -393,17 +403,20 @@ def ejecutar():
         
         col1, col2 = st.columns(2)
         with col1:
-            periodo_seleccionado = st.selectbox("📅 Seleccione el Período Académico:", ["Primer Periodo", "Segundo Periodo", "Tercer Periodo", "Cuarto Periodo"])
+            periodo_seleccionado = st.selectbox("📅 SELECCIONE EL PERÍODO ACADÉMICO:", ["Primer Periodo", "Segundo Periodo", "Tercer Periodo", "Cuarto Periodo"])
         with col2:
-            try:
-                res_clases_select = supabase.table("data_estudiantes").select("grado, grupo").execute()
-                lista_cursos = [f"{c['grado']}{c['grupo']}".strip() for c in res_clases_select.data if c.get('grado')]
-                if lista_cursos:
-                    curso_seleccionado = st.selectbox("🏫 Seleccione el Curso / Grado:", sorted(list(set(lista_cursos))))
-                else:
-                    curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: 10A):")
-            except Exception:
-                curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: 10A):")
+            # 🌟 MEJORA UX 2: Extraemos los cursos directamente para armar una lista desplegable perfecta
+            cursos_detectados = []
+            if datos_estudiantes:
+                for est in datos_estudiantes:
+                    gr = str(est.get("grado") if est.get("grado") is not None else est.get("Grado", "")).strip()
+                    gp = str(est.get("grupo") if est.get("grupo") is not None else est.get("Grupo", "")).strip()
+                    if gr:
+                        cursos_detectados.append(f"{gr}{gp}".strip())
+            
+            # Lista definitiva libre de text_input manuales para image_91eec4.png
+            cursos_finales = sorted(list(set(cursos_detectados))) if cursos_detectados else ["6A", "6B", "7A", "7B", "8A", "8B", "9A", "9B", "10A", "10B", "11A", "11B"]
+            curso_seleccionado = st.selectbox("🏫 SELECCIONE EL CURSO / GRADO DESTINO:", cursos_finales)
             
         if curso_seleccionado:
             try:
@@ -424,9 +437,7 @@ def ejecutar():
                         st.success(f"🎉 ¡Se migraron exitosamente {len(df_definitivas)} calificaciones consolidadas al sistema institucional para el {periodo_seleccionado}.")
                         st.balloons()
                 else:
-                    st.info("📭 No se encontraron registros de calificaciones procesadas para este curso.")
+                    st.info("📭 No se encontraron registros de calificaciones promediadas para este curso.")
                     
             except Exception as e_vista:
                 st.caption(f"Nota: Canal de comunicación con la vista de periodos en espera de consolidación final.")
-        else:
-            st.warning("Seleccione o ingrese un curso válido para procesar la consolidación.")
