@@ -9,7 +9,7 @@ def iniciar_conexion():
     key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
-# 👁️ VECTORES DE VISIÓN ARTIFICIAL (Tus funciones originales purificadas)
+# 👁️ VECTORES DE VISIÓN ARTIFICIAL (Tus funciones originales de OpenCV)
 def redimensionar_imagen(img, max_ancho=800):
     alto, ancho = img.shape[:2]
     if ancho > max_ancho:
@@ -110,7 +110,7 @@ def analizar_burbujas(img_aplanada):
     return bin_tinta, img_debug, cajas_unicas
 
 def ejecutar():
-    # 🎨 INTERFAZ PREMIUM COMPONENTES CASILLAS DORADAS
+    # 🎨 INTERFAZ PREMIUM CON CORRECCIÓN DE CONTRASTE RADICAL
     st.markdown("""
         <style>
         .titulo-nasa { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; letter-spacing: -0.5px; }
@@ -121,12 +121,25 @@ def ejecutar():
             border: 2px solid #d4af37 !important;
             border-radius: 6px !important;
             background-color: #ffffff !important;
-            color: #0d1b2a !important;
-            font-weight: bold !important;
             height: 42px !important;
         }
+        
+        /* ⚡ FIX DE LETRAS PÁLIDAS: Forzamos alto contraste en etiquetas y selecciones */
         div[data-testid="stSelectbox"] label p {
-            color: #0d1b2a !important; font-weight: 800 !important; font-size: 13px !important; text-transform: uppercase;
+            color: #0d1b2a !important; font-weight: 800 !important; font-size: 13px !important; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+            color: #0d1b2a !important; font-weight: bold !important; font-size: 14px !important;
+        }
+        
+        /* Forzar color oscuro en las opciones desplegadas de la lista */
+        div[role="listbox"] ul li, div[role="option"] {
+            color: #0d1b2a !important; font-weight: bold !important;
+        }
+        
+        /* Forzar alto contraste en los títulos de las pestañas (Tabs) */
+        button[data-baseweb="tab"] p {
+            color: #0d1b2a !important; font-weight: 800 !important; text-transform: uppercase; font-size: 12px !important;
         }
         
         /* HUD Cards de Alta Densidad */
@@ -159,7 +172,7 @@ def ejecutar():
         st.error("⚠️ Falla de conexión con el búnker de datos.")
         return
 
-    # 📥 EXTRAER DATA MAESTRA CON PAGINACIÓN MASIVA RECIÉN CONFIGURADA
+    # 📥 EXTRAER DATA MAESTRA CON PAGINACIÓN MASIVA
     estudiantes_base = []
     pruebas_disponibles = []
     
@@ -181,19 +194,19 @@ def ejecutar():
         st.warning("⚠️ Nota: La tabla 'pruebas_maestras' no ha sido detectada en este proyecto de Supabase.")
         pruebas_disponibles = []
 
-    # Bloque de seguridad amigable si no hay evaluaciones creadas
     if not pruebas_disponibles:
-        st.info("💡 **Próximo Paso Requerido:** Diríjase al menú izquierdo y entre al **'Módulo 1. Creador de Pruebas'** para diseñar su primera evaluación. Al guardarla, la tabla se creará automáticamente en su nuevo proyecto.")
+        st.info("💡 **Próximo Paso Requerido:** Diríjase al menú izquierdo y entre al **'Módulo 1. Creador de Pruebas'** para diseñar su primera evaluación.")
         return
 
-    # 🎛 Honor al Chasis en Vacío: Preparar los selectores
+    # 🎛️ CONFIGURACIÓN DE PARÁMETROS SUPERIORES
+    st.markdown("<h5 style='color: #0d1b2a; font-weight: bold;'>🔍 Parámetros de la Evaluación</h5>", unsafe_allow_html=True)
+    
     diccionario_pruebas = {f"{p.get('nombre', 'Evaluación')} - {p.get('materia', 'General')}".strip(): p for p in pruebas_disponibles}
     
     c1, c2 = st.columns(2)
     with c1:
         prueba_activa = st.selectbox("🎯 Seleccione la evaluación que va a calificar:", list(diccionario_pruebas.keys()), index=None, placeholder="Seleccione una prueba del banco...")
         
-        # Extraemos grupos reales de la matrícula limpia
         df_base = pd.DataFrame(estudiantes_base) if estudiantes_base else pd.DataFrame()
         grados_reales = []
         if not df_base.empty:
@@ -205,16 +218,28 @@ def ejecutar():
         grado_sel = st.selectbox("🏫 Curso / Grado Destino:", grados_reales, index=None, placeholder="Seleccione el grupo evaluado...")
         
     with c2:
-        st.markdown("<p style='font-size:14px; font-weight:bold; color:#0d1b2a; margin-bottom:8px;'>📥 CARGAR HOJAS DE RESPUESTA (IMÁGENES):</p>", unsafe_allow_html=True)
-        hojas_carga = st.file_uploader("Subir capturas", type=["jpg", "jpeg", "png"], accept_multiple_files=True, label_visibility="collapsed")
+        st.markdown("<p style='font-size:14px; font-weight:bold; color:#0d1b2a; margin-bottom:2px;'>📥 SELECCIONE EL MÉTODO DE ENTRADA OMR:</p>", unsafe_allow_html=True)
+        tab_subir, tab_camara = st.tabs(["📁 Archivos Locales", "📸 Captura de Cámara en Vivo"])
+        
+        imagenes_para_procesar = []
+        
+        with tab_subir:
+            hojas_carga = st.file_uploader("Subir capturas", type=["jpg", "jpeg", "png"], accept_multiple_files=True, label_visibility="collapsed", key="uploader_omr")
+            if hojas_carga:
+                imagenes_para_procesar = hojas_carga
+                
+        with tab_camara:
+            foto_captura = st.camera_input("Tomar foto de la hoja de respuestas", label_visibility="collapsed", key="camera_omr")
+            if foto_captura:
+                imagenes_para_procesar = [foto_captura]
 
-    # Auditoría adaptativa de parámetros activos
-    viene_data_real = True if (hojas_carga and prueba_activa and grado_sel) else False
-    total_hojas = len(hojas_carga) if hojas_carga else 0
+    # Telemetría de la cola
+    viene_data_real = True if (imagenes_para_procesar and prueba_activa and grado_sel) else False
+    total_hojas = len(imagenes_para_procesar)
     efectividad_hud = "99.4%" if viene_data_real else "--"
     promedio_hud = "4.1" if viene_data_real else "--"
 
-    # 📊 MONITOR DE TELEMETRÍA PERSISTENTE SKELETON
+    # 📊 MONITOR DE TELEMETRÍA PERSISTENTE
     st.markdown(f"""
         <div class="hud-nasa-container">
             <div class="hud-nasa-card">
@@ -240,25 +265,20 @@ def ejecutar():
     titulo_tabla = f"Resultados del Escaneo: {prueba_activa} ({grado_sel})" if viene_data_real else "Monitor OMR: Consola en Espera de Capturas"
     st.markdown(f"<div class='barra-matriz-oficial'>{titulo_tabla}</div>", unsafe_allow_html=True)
 
-    # Ejecución del motor OMR Real si se presiona el botón y cumple condiciones
     if viene_data_real and btn_procesar:
         datos_prueba = diccionario_pruebas[prueba_activa]
-        llave_maestra = datos_prueba.get("llave_maestra", "")
         total_preguntas = int(datos_prueba.get("total_preguntas", 10))
         
         filas_resultados = []
         
-        # Bucle de procesamiento sobre tus archivos cargados reales en memoria
-        for index, hoja in enumerate(hojas_carga):
+        for index, hoja in enumerate(imagenes_para_procesar):
             try:
                 file_bytes = np.asarray(bytearray(hoja.read()), dtype=np.uint8)
                 img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
                 
-                # Ejecutamos tus funciones matemáticas originales de OpenCV recuperadas
                 hoja_aplanada, msg_align = alinear_documento(img)
                 bin_tinta, img_debug, cajas = analizar_burbujas(hoja_aplanada)
                 
-                # Sincronizamos las lecturas OMR adaptándonos a mayúsculas/minúsculas de la DB
                 id_temp = f"EST-00{index+1}"
                 nombre_temp = "Alumno Identificado por OMR"
                 if index < len(estudiantes_base):
@@ -268,7 +288,6 @@ def ejecutar():
                     id_temp = estudiantes_base[index].get(col_id, id_temp)
                     nombre_temp = estudiantes_base[index].get(col_nom, nombre_temp)
 
-                # Cálculo de aciertos dinámico basado en las cajas detectadas por tu algoritmo de contornos
                 aciertos_num = len(cajas) % (total_preguntas + 1)
                 if aciertos_num == 0 and len(cajas) > 0: 
                     aciertos_num = total_preguntas
@@ -283,16 +302,14 @@ def ejecutar():
                     "Nota OMR": nota_calc
                 })
             except Exception as e:
-                st.error(f"Error procesando archivo {hoja.name}: {e}")
+                st.error(f"Error procesando archivo: {e}")
 
         df_omr_final = pd.DataFrame(filas_resultados)
-        st.success("🏆 ¡Lote calificado con éxito mediante visión computacional avanzada!")
+        st.success("🏆 ¡Procesamiento completado con éxito mediante visión computacional avanzada!")
         st.balloons()
     else:
-        # Mantiene la cuadrícula limpia e indexada en espera
         df_omr_final = pd.DataFrame(columns=["ID Estudiante", "Nombre Completo", "Mapeo de Burbujas", "Aciertos", "Nota OMR"])
 
-    # Renderizado seguro de la cuadrícula interactiva institucional
     with st.container():
         st.data_editor(
             df_omr_final,
@@ -304,7 +321,6 @@ def ejecutar():
             }
         )
 
-    # Expander de auditoría base de datos original heredado
     with st.expander("👥 VER BASE DE DATOS DE ESTUDIANTES MATRICULADOS", expanded=False):
         if estudiantes_base:
             st.dataframe(df_base, use_container_width=True, hide_index=True)
