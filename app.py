@@ -12,13 +12,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Menú Lateral Institucional
+# Menú Lateral Institucional (¡Reorganizado con el Portal Estudiantil en el Segundo Puesto!)
 with st.sidebar:
-    # 🎯 RADAR DE PRECISIÓN: Localiza la carpeta exacta en el servidor Linux
     base_dir = os.path.dirname(__file__)
     ruta_logo = os.path.join(base_dir, "assets", "logo.png")
     
-    # Si encuentra el logo lo proyecta arriba con simetría impecable
     if os.path.exists(ruta_logo):
         st.image(ruta_logo, use_container_width=True)
         
@@ -26,34 +24,34 @@ with st.sidebar:
     
     seleccion = st.radio("SELECCIONE EL MÓDULO:", [
         "0. Gestión de Estudiantes",
-        "1. Creador de Pruebas",
-        "2. Digitar Notas",
-        "3. Escáner OMR",
-        "4. Dashboard Analítico",
-        "5. Portal de Evaluación Estudiantil"
+        "1. Portal de Evaluación Estudiantil",  # 🌟 ¡Movido con éxito al segundo puesto!
+        "2. Creador de Pruebas",
+        "3. Digitar Notas",
+        "4. Escáner OMR",
+        "5. Dashboard Analítico"
     ])
 
-# 🧭 ENRUTADOR INTELIGENTE DEL BÚNKER (¡CONEXIONES INTACTAS!)
+# 🧭 ENRUTADOR INTELIGENTE DEL BÚNKER (Cables redirigidos de forma consecutiva)
 if seleccion == "0. Gestión de Estudiantes":
     from modulos import m0_gestion
     m0_gestion.ejecutar()
 
-elif seleccion == "1. Creador de Pruebas":
+elif seleccion == "1. Portal de Evaluación Estudiantil":  # 🛰️ Tu portal digital en su nueva coordenada
+    from modulos import m5_estudiante
+    m5_estudiante.ejecutar()
+
+elif seleccion == "2. Creador de Pruebas":
     from modulos import m1_creador
     m1_creador.ejecutar()
 
-elif seleccion == "2. Digitar Notas":
+elif seleccion == "3. Digitar Notas":
     from modulos import m2_digitar
     m2_digitar.ejecutar()
 
-elif seleccion == "3. Escáner OMR":  
+elif seleccion == "4. Escáner OMR":  
     from modulos import m3_escaner
     m3_escaner.ejecutar()
 
-elif seleccion == "4. Dashboard Analítico":
+elif seleccion == "5. Dashboard Analítico":
     from modulos import m4_dashboard
     m4_dashboard.ejecutar()
-
-elif seleccion == "5. Portal de Evaluación Estudiantil":  
-    from modulos import m5_estudiante
-    m5_estudiante.ejecutar()
