@@ -76,7 +76,7 @@ def ejecutar():
     notas_filtradas = [n for n in notas_totales if str(n.get('id_prueba')) == str(id_prueba_actual)]
 
     if not notas_filtradas:
-        st.warning("⚠️ Perímetro sin impactos: Ningún estudiante ha sido calificado aún para este examen (utilice el Escáner u OMR o Digitación Manual).")
+        st.warning("⚠️ Perímetro sin impactos: Ningún estudiante ha sido calificado aún para este examen (utilice el Escáner OMR o la Digitación Manual).")
         return
 
     # 📊 PROCESAMIENTO MATEMÁTICO DE DATOS (Pandas Core)
@@ -85,9 +85,15 @@ def ejecutar():
     df_notas['porcentaje'] = pd.to_numeric(df_notas['porcentaje'], errors='coerce')
     df_notas['estudiante'] = df_notas['estudiante'].str.upper().str.strip()
 
+    # 🛡️ PARACAÍDAS ANTI-NONETYPE (Evita fallas si las celdas de Supabase están vacías)
+    raw_puntaje_maximo = datos_examen.get('puntaje_maximo')
+    try:
+        nota_maxima_examen = float(raw_puntaje_maximo) if raw_puntaje_maximo is not None else 5.0
+    except (ValueError, TypeError):
+        nota_maxima_examen = 5.0
+
     # Variables Estadísticas de Combate
     total_alumnos = len(df_notas)
-    nota_maxima_examen = float(datos_examen.get('puntaje_maximo', 5.0))
     promedio_curso = df_notas['puntaje_obtenido'].mean()
     nota_mas_alta = df_notas['puntaje_obtenido'].max()
     
@@ -129,17 +135,14 @@ def ejecutar():
         st.markdown("#### 📋 Planilla Oficial de Calificaciones")
         st.info("💡 La siguiente tabla contiene los datos limpios indexados directamente desde el búnker de datos.")
         
-        # Preparación de DataFrame Ejecutivo para visualización humana
         df_ejecutivo = df_notas[['estudiante', 'puntaje_obtenido', 'porcentaje']].copy()
         df_ejecutivo.columns = ['ESTUDIANTE / ALUMNO', 'NOTA OBTENIDA', 'RENDIMIENTO (%)']
         df_ejecutivo = df_ejecutivo.sort_values(by='ESTUDIANTE / ALUMNO').reset_index(drop=True)
-        df_ejecutivo.index += 1 # Indexación amigable de 1 en adelante
+        df_ejecutivo.index += 1
         
-        # Visor de Datos
         st.dataframe(df_ejecutivo, use_container_width=True)
         
-        # ⚡ BOTÓN MAESTRO DE DESCARGA: Conversión a CSV compatible directo con Excel
-        csv_buffer = df_ejecutivo.to_csv(index=False).encode('utf-8-sig') # utf-8-sig para que Excel respete tildes y Ñs
+        csv_buffer = df_ejecutivo.to_csv(index=False).encode('utf-8-sig')
         
         st.download_button(
             label="📥 EXPORTAR PLANILLA MAESTRA A EXCEL (.CSV)",
@@ -157,18 +160,15 @@ def ejecutar():
         st.info("🤖 Esta gráfica clasifica a los estudiantes por rangos de rendimiento para identificar rápidamente baches de aprendizaje en el grupo.")
         
         try:
-            # Segmentar los rendimientos en contenedores tácticos (Rangos de notas)
             intervalos = [0, 20, 40, 60, 80, 100]
             etiquetas = ['Crítico (0-20%)', 'Bajo (21-40%)', 'Aceptable (41-60%)', 'Sobresaliente (61-80%)', 'Excelente (81-100%)']
             
             df_notas['Rango'] = pd.cut(df_notas['porcentaje'], bins=intervalos, labels=etiquetas, include_lowest=True)
             distribucion = df_notas['Rango'].value_counts().reindex(etiquetas).fillna(0)
             
-            # Gráfico de barras nativo Streamlit de alta velocidad
             df_grafico = pd.DataFrame({'Cantidad de Alumnos': distribucion})
             st.bar_chart(df_grafico, use_container_width=True)
             
-            # Alerta analítica automatizada para el docente
             if tasa_aprobacion < 50.0:
                 st.error(f"⚠️ **Alerta de Refuerzo:** Más de la mitad del curso se encuentra por debajo del umbral óptimo de aprobación. Se sugiere reprogramar competencias clave.")
             else:
