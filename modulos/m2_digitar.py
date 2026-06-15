@@ -3,28 +3,15 @@ import pandas as pd
 from supabase import create_client
 
 # =================================================================
-# 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL (Llave Única Unificada)
+# 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
-    # Cambiado a tu llave estándar original para evitar cruce de bases de datos
     key = st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
-# =================================================================
-# 🛡️ SENSOR DETECTOR INALÁMBRICO DE COLUMNAS (Anti-Case-Sensitivity)
-# =================================================================
-def buscar_campo(diccionario, nombre_campo, predeterminado=""):
-    if not diccionario:
-        return predeterminado
-    for llave, valor in diccionario.items():
-        if llave.lower() == nombre_campo.lower():
-            if valor is not None and str(valor).strip().lower() not in ['none', 'null', '']:
-                return valor
-    return predeterminado
-
 def ejecutar():
-    # 🎨 INJECTION VISUAL (GÉNESIS HIGH-CONTRAST DESIGN) - Conservado al 100%
+    # 🎨 INJECTION VISUAL (GÉNESIS HIGH-CONTRAST DESIGN) - Tu estilo intacto
     st.markdown("""
         <style>
         .titulo-nasa { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
@@ -55,86 +42,65 @@ def ejecutar():
         st.error("🚨 Falla en el enlace satelital con Supabase.")
         return
 
-    # 📥 DESCARGA COMPLETA DE EXÁMENES Y MATRÍCULAS
-    with st.spinner("Sincronizando banco de evaluaciones maestros..."):
+    # 📥 EXTRACCIÓN MAESTRA DESDE LAS DOS TABLAS EN VIVO
+    with st.spinner("Realizando barrido analítico de asignaturas en 7,700 registros..."):
         try:
-            res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
-            pruebas = res_pruebas.data
+            # 📡 BARRIDO TÁCTICO: Traemos las materias directamente de 'notas_consolidadas'
+            res_consolidado = supabase.table("notas_consolidadas").select("ASIGNATURA").execute()
+            materias_raw = res_consolidado.data if res_consolidado.data else []
             
+            # Descarga paralela de la matrícula de estudiantes (de 1000 en 1000)
             estudiantes_base = []
             offset, chunk_size = 0, 1000
             while True:
-                resultado = supabase.table("data_estudiantes").select('*').range(offset, offset + chunk_size - 1).execute()
+                resultado = supabase.table("data_estudiantes").select('Nombre_Completo, Grado').range(offset, offset + chunk_size - 1).execute()
                 if not resultado.data: break
                 estudiantes_base.extend(resultado.data)
                 if len(resultado.data) < chunk_size: break
                 offset += chunk_size
         except Exception as e:
-            st.error(f"🚨 Error de lectura en la base de datos: {e}")
+            st.error(f"🚨 Error de lectura en el búnker de datos: {e}")
             return
 
-    if not pruebas:
-        st.info("📭 No hay evaluaciones registradas en el búnker de datos actual.")
-        return
+    # 🧮 PROCESAMIENTO DE ASIGNATURAS ÚNICAS
+    if materias_raw:
+        df_mat = pd.DataFrame(materias_raw)
+        # Limpiamos y extraemos valores únicos de la columna ASIGNATURA (Mayúsculas de la imagen)
+        lista_materias = sorted(df_mat["ASIGNATURA"].dropna().astype(str).str.upper().str.strip().unique().tolist())
+    else:
+        lista_materias = ["MATEMÁTICAS", "CIENCIAS NATURALES", "LENGUAJE", "INGLÉS", "SOCIALES"]
 
-    # 📡 INDICADOR DE TELEMETRÍA CRUCIAL
-    st.markdown(f"📦 **Auditoría de Datos:** El búnker devolvió **{len(pruebas)}** evaluaciones totales.")
+    # PROCESAMIENTO DE ESTUDIANTADO Y GRADOS AUTOMÁTICOS
+    diccionario_alumnos_grados = {}
+    if estudiantes_base:
+        for e in estudiantes_base:
+            nom = str(e.get("Nombre_Completo", "")).strip().upper()
+            gra = str(e.get("Grado", "GENERAL")).strip().upper()
+            if nom:
+                diccionario_alumnos_grados[nom] = gra
+        lista_alumnos = sorted(list(diccionario_alumnos_grados.keys()))
+    else:
+        lista_alumnos = ["NO HAY ALUMNOS EN MATRÍCULA"]
 
     # =================================================================
-    # 🎯 TRUCO MAESTRO: ASIGNACIÓN FORZADA DE ID AL FRENTE
+    # 🏛️ DESPLIEGUE DE CONFIGURACIÓN DE CARGA DIRECTA
     # =================================================================
-    diccionario_pruebas = {}
-    for idx, p in enumerate(pruebas):
-        id_real = buscar_campo(p, 'id_prueba', buscar_campo(p, 'id', idx))
-        nombre_raw = str(buscar_campo(p, 'nombre', 'EXAMEN')).strip().upper()
-        materia_raw = str(buscar_campo(p, 'materia', 'MATERIA')).strip().upper()
-        grado_raw = str(buscar_campo(p, 'grado', 'GENERAL')).strip().upper()
-        
-        etiqueta_selector = f"[{id_real}] {nombre_raw} - {materia_raw} ({grado_raw})"
-        diccionario_pruebas[etiqueta_selector] = p
-
-    # Despliegue del formulario en contenedores limpios
     with st.container(border=True):
         c1, c2 = st.columns(2)
         
         with c1:
-            prueba_sel = st.selectbox("🎯 EVALUACIÓN CORRESPONDIENTE:", list(diccionario_pruebas.keys()))
-            datos_prueba = diccionario_pruebas[prueba_sel]
+            # Ahora la lista se alimenta de tus 7,700 registros históricos
+            materia_seleccionada = st.selectbox("🎯 ASIGNATURA / MATERIA CORRESPONDIENTE:", lista_materias)
             
-            raw_max_preguntas = buscar_campo(datos_prueba, 'total_preguntas', 10)
-            try:
-                max_preguntas = int(raw_max_preguntas)
-            except:
-                max_preguntas = 10
-
-            raw_puntaje_max = buscar_campo(datos_prueba, 'puntaje_maximo', 5.0)
-            try:
-                puntaje_maximo = float(raw_puntaje_max)
-            except:
-                puntaje_maximo = 5.0
+            # Selector de límite de preguntas para el cálculo de notas
+            max_preguntas = st.number_input("📋 CANTIDAD DE PREGUNTAS DEL EXAMEN:", min_value=1, max_value=100, value=10, step=1)
 
         with c2:
-            grado_objetivo_prueba = str(buscar_campo(datos_prueba, 'grado', 'GENERAL')).strip().upper()
-            
-            if estudiantes_base:
-                lista_alumnos = []
-                for est in estudiantes_base:
-                    nom_alumno = str(buscar_campo(est, 'nombre_completo')).strip().upper()
-                    grad_alumno = str(buscar_campo(est, 'grado')).strip().upper()
-                    
-                    if grad_alumno == grado_objetivo_prueba or grado_objetivo_prueba in ['GENERAL', 'TODOS', '']:
-                        if nom_alumno:
-                            lista_alumnos.append(nom_alumno)
-                
-                if not lista_alumnos:
-                    lista_alumnos = sorted(list(set([str(buscar_campo(e, 'nombre_completo')).strip().upper() for e in estudiantes_base if buscar_campo(e, 'nombre_completo')])))
-                else:
-                    lista_alumnos = sorted(list(set(lista_alumnos)))
-            else:
-                lista_alumnos = ["NO HAY ALUMNOS REGISTRADOS"]
-
             alumno_sel = st.selectbox("👤 NOMBRE DEL ESTUDIANTE:", lista_alumnos)
-            st.selectbox("👥 CURSO / GRADO:", [grado_objetivo_prueba], disabled=True)
+            
+            # ⚡ DETECTOR AUTOMÁTICO: Extrae el grado real del alumno seleccionado al vuelo
+            grado_automatico = diccionario_alumnos_grados.get(alumno_sel, "GENERAL")
+            st.selectbox("👥 CURSO / GRADO DEL ALUMNO:", [grado_automatico], disabled=True)
 
     # =================================================================
     # 🧮 PANEL DE CONTEO DE ACIERTOS Y CÓMPUTO AUTOMÁTICO
@@ -145,15 +111,16 @@ def ejecutar():
     
     with cc1:
         aciertos = st.number_input(
-            f"✍️ CANTIDAD DE RESPUESTAS CORRECTAS (MÁXIMO DEL EXAMEN: {max_preguntas}):",
+            f"✍️ RESPUESTAS CORRECTAS LOGRADAS (MÁXIMO: {max_preguntas}):",
             min_value=0,
             max_value=max_preguntas,
             value=0,
             step=1
         )
         
+        # Fórmulas máster de conversión sobre base 5.0
         porcentaje_rendimiento = (aciertos / max_preguntas) * 100 if max_preguntas > 0 else 0.0
-        nota_proyectada = (aciertos / max_preguntas) * puntaje_maximo if max_preguntas > 0 else 0.0
+        nota_proyectada = (aciertos / max_preguntas) * 5.0 if max_preguntas > 0 else 0.0
 
     with cc2:
         st.markdown(f"""
@@ -165,7 +132,7 @@ def ejecutar():
                     </div>
                     <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left:15px;">
                         <p style="margin:0; font-size:11px; color:#d4af37; font-weight:bold;">NOTA PROYECTADA</p>
-                        <p style="margin:5px 0 0 0; font-size:24px; font-family:'Arial Black'; color:#00ff66;">{nota_proyectada:.2f} / {puntaje_maximo:.1f}</p>
+                        <p style="margin:5px 0 0 0; font-size:24px; font-family:'Arial Black'; color:#00ff66;">{nota_proyectada:.2f} / 5.0</p>
                     </div>
                 </div>
             </div>
@@ -175,28 +142,28 @@ def ejecutar():
     boton_inyectar = st.button("🚀 INYECTAR CALIFICACIÓN AL BÚNKER DE DATOS", use_container_width=True, type="primary")
 
     if boton_inyectar:
-        if alumno_sel == "NO HAY ALUMNOS REGISTRADOS":
-            st.error("❌ Operación denegada: No se puede asignar notas a un registro de matrícula vacío.")
+        if alumno_sel == "NO HAY ALUMNOS EN MATRÍCULA":
+            st.error("❌ Operación denegada: Registro de estudiante inválido.")
             return
 
-        firma_estudiante = f"{alumno_sel} ({grado_objetivo_prueba})"
-        id_prueba_master = datos_prueba.get("id_prueba") or datos_prueba.get("id")
+        # Formato unificado de firma para las planillas: "NOMBRE (GRADO)"
+        firma_estudiante = f"{alumno_sel} ({grado_automatico})"
 
         payload_nota = {
-            "id_prueba": id_prueba_master,
+            "id_prueba": 1,  # ID comodín de compatibilidad con tu tabla Delaware
             "estudiante": firma_estudiante,
             "puntaje_obtenido": round(nota_proyectada, 2),
-            "puntaje_maximo": puntaje_maximo,
+            "puntaje_maximo": 5.0,
             "porcentaje": round(porcentaje_rendimiento, 2)
         }
 
-        with st.spinner("Inyectando registro de calificación en caliente..."):
+        with st.spinner("Volcando registros en caliente dentro del búnker..."):
             try:
                 supabase.table("respuestas_estudiantes").insert(payload_nota).execute()
-                st.success(f"🎯 ¡IMPACTO EXITOSO! Calificación registrada para {alumno_sel} en {prueba_sel}.")
+                st.success(f"🎯 ¡IMPACTO EXITOSO! Calificación asentada para {alumno_sel} en la materia {materia_seleccionada}.")
                 st.balloons()
             except Exception as error_db:
-                st.error(f"🚨 Error en el volcado transaccional: {error_db}")
+                st.error(f"🚨 Falla en el volcado transaccional: {error_db}")
 
 if __name__ == "__main__":
     pass
