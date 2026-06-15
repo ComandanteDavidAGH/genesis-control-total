@@ -12,11 +12,12 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 # =================================================================
-# 🔒 CONEXIÓN SEGURA AL CENTRO DE DATOS 
+# 🔌 CONEXIÓN SEGURA AL CENTRO DE DATOS (REGLA DE ORO: INTACTO)
 # =================================================================
+@st.cache_resource
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].replace('"', '').replace("'", "").strip()
-    key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
+    key = st.secrets["SUPABASE_KEY"].replace('"', '').replace("'", "").strip()
     return create_client(url, key)
 
 # =================================================================
@@ -34,7 +35,7 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
     pdf = GeneradorPDF()
     pdf.add_page()
     
-    # 1. Cabecera del Estudiante
+    # 1. Cabecera del Estudiante (Ahora con tildes y eñes reales)
     pdf.set_font('Helvetica', 'B', 11)
     pdf.cell(40, 8, 'Estudiante:', 0, 0)
     pdf.set_font('Helvetica', '', 11)
@@ -86,9 +87,9 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
         marcada = str(respuestas_alumno.get(preg, "VACÍA"))
         
         if marcada == correcta:
-            pdf.set_fill_color(220, 255, 220)
+            pdf.set_fill_color(220, 255, 220) # Verde clarito si acertó
         else:
-            pdf.set_fill_color(255, 220, 220)
+            pdf.set_fill_color(255, 220, 220) # Rojo clarito si falló
             temas_a_reforzar.add(tema)
             
         pdf.cell(30, 8, preg.replace("Pregunta ", "P "), 1, 0, 'C', fill=True)
@@ -115,20 +116,20 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
     return pdf.output()
 
 # =================================================================
-# 🖥️ SECCIÓN DE LA INTERFAZ DE USUARIO
+# 🖥️ INTERFAZ DE USUARIO (REGLA DE ORO: TU ESTRUCTURA ORIGINAL)
 # =================================================================
 def ejecutar():
-    # 🎨 PURIFICACIÓN DE CSS: Orientado con precisión para no alterar el menú izquierdo
+    # 🎨 FILTRADO QUIRÚRGICO DE CSS: Solo afecta el área central, nunca el menú izquierdo
     st.markdown("""
     <style>
     .titulo-dashboard { color: #0d1b2a; border-bottom: 3px solid #d4af37; padding-bottom: 5px; font-family: 'Arial Black'; }
     .sub-seccion { color: #1b263b; font-family: 'Arial'; margin-top: 25px; border-left: 4px solid #d4af37; padding-left: 10px; }
     
-    /* Filtrado quirúrgico: Afecta solo los componentes internos de este módulo principal */
-    button[data-baseweb="tab"] p, div[data-testid="stSelectbox"] label p {
+    div[data-testid="stMainBlockContainer"] button[data-baseweb="tab"] p, 
+    div[data-testid="stMainBlockContainer"] div[data-testid="stSelectbox"] label p {
         color: #0d1b2a !important; font-weight: 800 !important; text-transform: uppercase; font-size: 13px !important;
     }
-    div[data-baseweb="select"], div[data-testid="stDateInput"] input {
+    div[data-testid="stMainBlockContainer"] div[data-baseweb="select"] {
         color: #0d1b2a !important; font-weight: bold !important;
     }
     </style>
@@ -143,24 +144,25 @@ def ejecutar():
         st.error("⚠️ Falla de conexión con el centro de datos.")
         return
 
-    with st.spinner("Sincronizando registros académicos..."):
-        try:
-            res_respuestas = supabase.table("respuestas_estudiantes").select("*").execute()
-            datos_respuestas = res_respuestas.data
-            
-            res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
-            datos_pruebas = res_pruebas.data
-
-            res_estudiantes = supabase.table("data_estudiantes").select("*").execute()
-            datos_estudiantes = res_estudiantes.data
-        except Exception as e:
-            st.error(f"💥 Error en la sincronización de tablas: {e}")
-            return
-
-    # Pestañas maestro
+    # Tus dos pestañas de la maqueta original
     tab_general, tab_periodos = st.tabs(["📈 Analítica General", "🗃️ Consolidación por Período (Migrar)"])
 
     with tab_general:
+        with st.spinner("Sincronizando registros académicos..."):
+            try:
+                res_respuestas = supabase.table("respuestas_estudiantes").select("*").execute()
+                datos_respuestas = res_respuestas.data
+                
+                res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
+                datos_pruebas = res_pruebas.data
+
+                # Apuntamos a la tabla real de este proyecto
+                res_estudiantes = supabase.table("data_estudiantes").select("*").execute()
+                datos_estudiantes = res_estudiantes.data
+            except Exception as e:
+                st.error(f"💥 Error en la sincronización de tablas: {e}")
+                return
+
         st.markdown("<h3 class='sub-seccion'>📋 Todos los Cuestionarios Registrados</h3>", unsafe_allow_html=True)
         
         if not datos_pruebas:
@@ -170,7 +172,6 @@ def ejecutar():
             for p in datos_pruebas:
                 fecha_p = p.get("created_at", "N/A")[:10] if p.get("created_at") else "N/A"
                 max_pts = float(p.get("puntaje_maximo") if p.get("puntaje_maximo") is not None else 5.0)
-                
                 lista_archivador.append({
                     "ID": p.get("id", p.get("id_prueba")),
                     "Nombre del Cuestionario": p["nombre"].upper(),
@@ -183,19 +184,8 @@ def ejecutar():
             df_archivador = pd.DataFrame(lista_archivador)
             st.dataframe(df_archivador.drop(columns=["ID"]), use_container_width=True, hide_index=True)
 
-            opciones_pruebas = {f"{p['nombre']} - {p['materia']}".strip(): p for p in datos_pruebas}
-            
-            # 🌟 SOLUCIÓN AL TYPEERROR: Estructura robusta de dos columnas con activación por check
-            c_sel1, c_sel2 = st.columns(2)
-            with c_sel1:
-                prueba_seleccionada = st.selectbox("🎯 Seleccione el cuestionario que desea inspeccionar en detalle:", list(opciones_pruebas.keys()))
-            with c_sel2:
-                # El check activa el calendario de manera limpia y sin conflictos de compatibilidad
-                activar_calendario = st.checkbox("🔍 ¿Filtrar resultados por un día específico?")
-                if activar_calendario:
-                    filtro_fecha = st.date_input("📅 Seleccione la fecha en el almanaque:")
-                else:
-                    filtro_fecha = None
+            opciones_pruebas = {f"{p['nombre']} - {p['materia']}": p for p in datos_pruebas}
+            prueba_seleccionada = st.selectbox("🎯 Seleccione el cuestionario que desea inspeccionar en detalle:", list(opciones_pruebas.keys()))
             
             datos_prueba_maestra = opciones_pruebas[prueba_seleccionada]
             id_prueba_target = datos_prueba_maestra.get("id", datos_prueba_maestra.get("id_prueba"))
@@ -206,10 +196,6 @@ def ejecutar():
             if not df_respuestas_base.empty:
                 df_respuestas_base['fecha_formateada'] = pd.to_datetime(df_respuestas_base['created_at']).dt.strftime('%Y-%m-%d')
                 df_filtrado = df_respuestas_base[df_respuestas_base['id_prueba'] == id_prueba_target].copy()
-                
-                if filtro_fecha:
-                    fecha_busqueda = filtro_fecha.strftime('%Y-%m-%d')
-                    df_filtrado = df_filtrado[df_filtrado['fecha_formateada'] == fecha_busqueda].copy()
             else:
                 df_filtrado = pd.DataFrame()
 
@@ -282,12 +268,12 @@ def ejecutar():
                                 st.success(f"🎉 ¡Migrados {registros_migrados} calificaciones!")
                                 st.balloons()
                 else:
-                    st.caption("Faltan datos filtrados para habilitar descargas.")
+                    st.caption("Faltan datos escaneados para habilitar descargas.")
 
             with col_der:
                 st.markdown("#### 📊 Distribución de Puntuaciones")
                 if df_filtrado.empty:
-                    st.info("📭 No hay registros evaluados para los filtros seleccionados.")
+                    st.info("📭 No hay registros evaluados para este cuestionario.")
                 else:
                     df_filtrado["porcentaje"] = pd.to_numeric(df_filtrado["porcentaje"], errors="coerce").fillna(0.0)
                     df_filtrado["Rango"] = df_filtrado["porcentaje"].apply(lambda p: "Bajo (<60%)" if p<60 else "Básico (60-79%)" if p<80 else "Alto (80-89%)" if p<90 else "Superior (≥90%)")
@@ -304,7 +290,7 @@ def ejecutar():
 
             st.markdown("<h3 class='sub-seccion'>🛑 Control de Asistencia</h3>", unsafe_allow_html=True)
             if df_filtrado.empty:
-                st.info("No hay registros en los filtros para cruzar asistencia.")
+                st.info("Suba hojas al escáner para activar el control.")
             else:
                 estudiantes_presentes = df_filtrado["estudiante"].dropna().astype(str).tolist()
                 
@@ -405,18 +391,18 @@ def ejecutar():
         
         col1, col2 = st.columns(2)
         with col1:
-            periodo_seleccionado = st.selectbox("📅 SELECCIONE EL PERÍODO ACADÉMICO:", ["Primer Periodo", "Segundo Periodo", "Tercer Periodo", "Cuarto Periodo"])
+            periodo_seleccionado = st.selectbox("📅 Seleccione el Período Académico:", ["Primer Periodo", "Segundo Periodo", "Tercer Periodo", "Cuarto Periodo"])
         with col2:
-            cursos_detectados = []
-            if datos_estudiantes:
-                for est in datos_estudiantes:
-                    gr = str(est.get("grado") if est.get("grado") is not None else est.get("Grado", "")).strip()
-                    gp = str(est.get("grupo") if est.get("grupo") is not None else est.get("Grupo", "")).strip()
-                    if gr:
-                        cursos_detectados.append(f"{gr}{gp}".strip())
-            
-            cursos_finales = sorted(list(set(cursos_detectados))) if cursos_detectados else ["6A", "6B", "7A", "7B", "8A", "8B", "9A", "9B", "10A", "10B", "11A", "11B"]
-            curso_seleccionado = st.selectbox("🏫 SELECCIONE EL CURSO / GRADO DESTINO:", cursos_finales)
+            # Tu bloque selectbox relacional original impecable adaptado a data_estudiantes
+            try:
+                res_clases_select = supabase.table("data_estudiantes").select("grado, grupo").execute()
+                lista_cursos = [f"{c['grado']}{c['grupo']}".strip() for c in res_clases_select.data if c.get('grado')]
+                if lista_cursos:
+                    curso_seleccionado = st.selectbox("🏫 Seleccione el Curso / Grado:", sorted(list(set(lista_cursos))))
+                else:
+                    curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: 10A):")
+            except Exception:
+                curso_seleccionado = st.text_input("Escriba el Nombre del Curso (Ej: 10A):")
             
         if curso_seleccionado:
             try:
@@ -437,7 +423,9 @@ def ejecutar():
                         st.success(f"🎉 ¡Se migraron exitosamente {len(df_definitivas)} calificaciones consolidadas al sistema institucional para el {periodo_seleccionado}.")
                         st.balloons()
                 else:
-                    st.info("📭 No se encontraron registros de calificaciones promediadas para este curso.")
+                    st.info("📭 No se encontraron registros de calificaciones procesadas para este curso.")
                     
             except Exception as e_vista:
                 st.caption(f"Nota: Canal de comunicación con la vista de periodos en espera de consolidación final.")
+        else:
+            st.warning("Seleccione o ingrese un curso válido para procesar la consolidación.")
