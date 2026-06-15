@@ -1,4 +1,16 @@
 import streamlit as st
+# 🛰️ TRAMPA DE TELEMETRÍA DE ARCHIVOS (TEMPORAL)
+import os
+with st.sidebar.expander("🕵️‍♂️ Radar de Conexión de Módulos", expanded=True):
+    st.write(f"**Selección actual:** `{seleccion if 'seleccion' in locals() else 'No asignada'}`")
+    if os.path.exists("modulos"):
+        archivos = os.listdir("modulos")
+        st.write("**Archivos reales en la carpeta 'modulos':**")
+        for arc in archivos:
+            st.code(f"📁 {arc}")
+    else:
+        st.error("🚨 La carpeta 'modulos' no existe en la raíz.")
+# ────────────────────────────────────────────────────────
 
 # Configuración de página de alta definición
 st.set_page_config(page_title="GÉNESIS v2.5", layout="wide", page_icon="⚙️")
