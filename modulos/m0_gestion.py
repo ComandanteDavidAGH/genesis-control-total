@@ -34,7 +34,6 @@ def ejecutar():
         
         with st.spinner("Sincronizando base de datos masiva..."):
             while True:
-                # TRUCO MAESTRO: select('*') evita errores de mayúsculas en el servidor
                 resultado = supabase.table("estudiantes")\
                     .select('*')\
                     .order('id_estudiante')\
@@ -50,14 +49,14 @@ def ejecutar():
     if estudiantes_base:
         df = pd.DataFrame(estudiantes_base)
         
-        # Inteligencia Artificial Interna: Forzamos a minúsculas para inmunizar el código
+        # Forzamos todo a minúsculas para evitar problemas de aduana
         df.columns = [c.lower() for c in df.columns]
         
-        # Filtro de duplicados seguro
+        # Filtro de duplicados seguro por ID
         df_unicos = df.drop_duplicates(subset=["id_estudiante"])
         total_matricula = len(df_unicos)
         
-        # Buscador dinámico de columnas por si acaso cambian de nombre
+        # Buscador preventivo de columnas dinámicas
         col_grado = "grado" if "grado" in df.columns else df.columns[2]
         col_grupo = "grupo" if "grupo" in df.columns else df.columns[3]
         
@@ -85,20 +84,35 @@ def ejecutar():
         st.markdown('<div class="contenedor-matriz">', unsafe_allow_html=True)
         st.markdown("<h4 style='color: #0d1b2a; font-weight: bold; margin-top: 0px; margin-bottom: 15px;'>MATRIZ OFICIAL DE ESTUDIANTES MATRICULADOS</h4>", unsafe_allow_html=True)
         
-        # Emparejamos los nombres para mostrarlos elegantes en la interfaz con mayúsculas
-        columnas_existentes = list(df.columns)
+        # 🔐 ESCUDO ANTIMAGNETICO: Desduplicador estricto de nombres de columnas
+        nombres_ocupados = set()
         mapeo_visual = {}
-        for c in columnas_existentes:
-            if "id" in c: mapeo_visual[c] = "ID Estudiante"
-            elif "nombre" in c: mapeo_visual[c] = "Nombre Completo"
-            elif "grado" in c: mapeo_visual[c] = "Grado"
-            elif "grupo" in c: mapeo_visual[c] = "Grupo"
-            elif "correo" in c or "mail" in c: mapeo_visual[c] = "Correo Institucional"
-            else: mapeo_visual[c] = c.replace("_", " ").title()
-
-        df_visual = df_unicos.rename(columns=mapeo_visual)
-        col_orden = "Nombre Completo" if "Nombre Completo" in df_visual.columns else df_visual.columns[1]
         
+        for c in df.columns:
+            if "id_estudiante" in c: lbl = "ID Estudiante"
+            elif "nombre" in c: lbl = "Nombre Completo"
+            elif "grado" in c: lbl = "Grado"
+            elif "grupo" in c: lbl = "Grupo"
+            elif "correo" in c or "mail" in c: lbl = "Correo Institucional"
+            else: lbl = c.replace("_", " ").title()
+            
+            # Si el nombre ya existe en el set, le fabricamos un alias único
+            final_lbl = lbl
+            contador = 1
+            while final_lbl in nombres_ocupados:
+                final_lbl = f"{lbl} ({contador})"
+                contador += 1
+                
+            nombres_ocupados.add(final_lbl)
+            mapeo_visual[c] = final_lbl
+
+        # Renombramos con la garantía de que no hay repetidos
+        df_visual = df_unicos.rename(columns=mapeo_visual)
+        
+        # Buscamos la columna para ordenar de forma segura
+        col_orden = "Nombre Completo" if "Nombre Completo" in df_visual.columns else df_visual.columns[1]
         df_ordenado = df_visual.sort_values(by=col_orden)
-        st.dataframe(df_ordenado[list(mapeo_visual.values())], use_container_width=True, hide_index=True)
+        
+        # BLINDAJE FINAL: Pasamos el DataFrame directo sin hacer cortes con listas duplicadas
+        st.dataframe(df_ordenado, use_container_width=True, hide_index=True)
         st.markdown('</div>', unsafe_allow_html=True)
