@@ -3,14 +3,17 @@ import pandas as pd
 from supabase import create_client
 
 def iniciar_conexion():
-    url = st.secrets["SUPABASE_URL"].strip()
-    key = st.secrets["SUPABASE_KEY"].strip()
+    # 📡 BYPASS TOTAL: Escribimos los datos directo en el cable
+    url = "https://bwrwkluhzzmrzrsszwac.supabase.co"
     
-    # 🛰️ RADAR DE SEGURIDAD EN VIVO
-    st.info(f"""🔍 **Rastreador de Conexión Activo:**
-* 🛰️ URL apuntada: `{url}`
-* 📏 Longitud de clave: **{len(key)}** caracteres.
-* 🛡️ Inicio: `{key[:8]}...` | Final: `...{key[-8:]}`""")
+    # ⚠️ REEMPLAZA ESTO: Borra el texto de abajo y pega tu clave anon real de bwrwkl entre las comillas
+    key = "PEGA_AQUÍ_TU_LLAVE_ANON_REAL_DE_SUPABASE_LA_QUE_EMPIEZA_CON_EYJ"
+    
+    # Telemetría de control
+    st.info(f"""🔍 **Bypass de Emergencia Activo:**
+* 🛰️ Conectando directo a: `{url}`
+* 📏 Longitud real en código: **{len(key)}** caracteres.
+* 🛡️ Firma actual: `{key[:8]}...` | Final: `...{key[-8:]}`""")
     
     return create_client(url, key)
 
@@ -31,7 +34,7 @@ def ejecutar():
     """, unsafe_allow_html=True)
 
     st.markdown("<p class='titulo-genesis'>👥 Gestión de Estudiantes</p>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitulo-genesis'>Consola Central de Control de Matrícula</p>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitulo-genesis'>Consola Central de Control de Matrícula (Bypass Mode)</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     try:
@@ -39,9 +42,8 @@ def ejecutar():
         estudiantes_base = []
         offset, chunk_size = 0, 1000
         
-        with st.spinner("Sincronizando base de datos masiva con el búnker real..."):
+        with st.spinner("Forzando enlace directo con el búnker real..."):
             while True:
-                # Volvemos a la tabla de producción real: data_estudiantes
                 resultado = supabase.table("data_estudiantes")\
                     .select('*')\
                     .range(offset, offset + chunk_size - 1).execute()
@@ -51,10 +53,6 @@ def ejecutar():
                 offset += chunk_size
     except Exception as e:
         st.error(f"🚨 Error de enlace masivo: {e}")
-        st.warning("""💡 **Protocolo de Reajuste Obligatorio:** 1. Ve al Supabase del proyecto real (`bwrwkluhzzmrzrsszwac`).
-2. Entra a Settings (⚙️) -> API.
-3. Copia la clave **anon public** (Debe empezar por `eyJhbG...`).
-4. Reemplázala en los Secrets de Streamlit Cloud y dale a Save.""")
         return
 
     if estudiantes_base:
@@ -89,20 +87,5 @@ def ejecutar():
         """, unsafe_allow_html=True)
 
         st.markdown('<div class="contenedor-matriz">', unsafe_allow_html=True)
-        st.markdown("<h4 style='color: #0d1b2a; font-weight: bold; margin-top: 0px;'>MATRIZ OFICIAL DE ESTUDIANTES MATRICULADOS</h4>", unsafe_allow_html=True)
-        
-        mapeo_visual = {}
-        for c in df.columns:
-            if "id" in c: mapeo_visual[c] = "ID Estudiante"
-            elif "nombre" in c: mapeo_visual[c] = "Nombre Completo"
-            elif "grado" in c: mapeo_visual[c] = "Grado"
-            elif "grupo" in c: mapeo_visual[c] = "Grupo"
-            elif "correo" in c or "mail" in c: mapeo_visual[c] = "Correo Institucional"
-            else: mapeo_visual[c] = c.replace("_", " ").title()
-
-        df_visual = df_unicos.rename(columns=mapeo_visual)
-        col_orden = "Nombre Completo" if "Nombre Completo" in df_visual.columns else df_visual.columns[1]
-        df_ordenado = df_visual.sort_values(by=col_orden)
-        
-        st.dataframe(df_ordenado, use_container_width=True, hide_index=True)
+        st.dataframe(df_unicos, use_container_width=True, hide_index=True)
         st.markdown('</div>', unsafe_allow_html=True)
