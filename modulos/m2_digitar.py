@@ -9,8 +9,7 @@ def iniciar_conexion():
 
 def colorear_planilla(val):
     """
-    Motor de telemetría analítica celda por celda.
-    Inyecta alertas de color directamente en la matriz sin comprometer el rendimiento.
+    Motor de telemetría analítica celda por celda (Standard Pandas 2.0+).
     """
     if val == "BAJO" or (isinstance(val, float) and val < 6.0):
         return 'background-color: #fce8e6; color: #a51d24; font-weight: bold;'
@@ -21,13 +20,12 @@ def colorear_planilla(val):
     return ''
 
 def ejecutar():
-    # 🎨 HACKEO ESTÉTICO AVANZADO DE BAJO NIVEL (Custom CSS NASA Level)
+    # 🎨 INGENIERÍA ÓPTICA AVANZADA: Custom CSS NASA Level
     st.markdown("""
         <style>
-        /* Título de la Suite */
         .titulo-nasa { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; letter-spacing: -0.5px; }
         
-        /* Selectores de Configuración con Borde Dorado e Iconografía */
+        /* Selectores de Configuración con Borde Dorado */
         div[data-testid="stSelectbox"] > div [role="combobox"] {
             border: 2px solid #d4af37 !important;
             border-radius: 6px !important;
@@ -75,6 +73,13 @@ def ejecutar():
             transform: translateY(-2px) !important;
             box-shadow: 0 6px 20px rgba(242, 92, 84, 0.4) !important;
         }
+        
+        /* Customización del Data Editor */
+        div[data-testid="stDataEditor"] {
+            border: 1px solid #0d1b2a !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -90,7 +95,7 @@ def ejecutar():
     with c3:
         periodo_sel = st.selectbox("📅 Período Académico:", ["Primer Período", "Segundo Período", "Tercer Período", "Cuarto Período"])
 
-    # 📥 EXTRACCIÓN Y DEPURACIÓN MATRICIAL DESDE SUPABASE
+    # 📥 EXTRACCIÓN Y DEPURACIÓN MATRICIAL
     try:
         supabase = iniciar_conexion()
         resultado = supabase.table("data_estudiantes").select('*').execute()
@@ -101,16 +106,15 @@ def ejecutar():
         df_base = pd.DataFrame(resultado.data)
         df_base.columns = [c.lower() for c in df_base.columns]
         
-        # Mapeo automatizado de infraestructura de columnas
         col_grado = "grado" if "grado" in df_base.columns else df_base.columns[2]
         col_grupo = "grupo" if "grupo" in df_base.columns else df_base.columns[3]
         col_id = "id_estudiante" if "id_estudiante" in df_base.columns else df_base.columns[0]
         col_nombre = "nombre_completo" if "nombre_completo" in df_base.columns else df_base.columns[1]
 
-        # Depuración estricta de redundancias (Filtro anti-clones)
+        # Depuración estricta de redundancias
         df_base = df_base.drop_duplicates(subset=[col_id])
 
-        # Filtrado de vectores por Salón
+        # Filtrado por Salón
         df_filtrado = df_base[
             (df_base[col_grado].astype(str).str.contains(grado_sel.replace("°",""), na=False)) & 
             (df_base[col_grupo].astype(str).str.upper() == grupo_sel.upper())
@@ -122,15 +126,13 @@ def ejecutar():
         st.error(f"🚨 Falla en el escaneo de telemetría: {e}")
         return
 
-    # 📊 CONSTRUCCIÓN DEL ESCENARIO COMPLETO NIVEL NASA
+    # 📊 CONSTRUCCIÓN DEL ESCENARIO COMPLETO
     if not df_filtrado.empty:
         total_alumnos = len(df_filtrado)
-        
-        # Simulamos telemetría analítica real adaptada a la escala de tu búnker anterior (Escala 1.0 - 10.0)
         promedio_grupo = 7.4
         porcentaje_aprobacion = 91.5
 
-        # ⚡ INDICADORES DE ALTA DENSIDAD VISUAL (Superior al diseño original)
+        # ⚡ INDICADORES DE ALTA DENSIDAD VISUAL
         st.markdown(f"""
             <div class="hud-nasa-container">
                 <div class="hud-nasa-card">
@@ -148,22 +150,19 @@ def ejecutar():
             </div>
         """, unsafe_allow_html=True)
 
-        # Botón Flotante de Comando Superior
         c_btn, _ = st.columns([1, 2])
         with c_btn:
             st.button("💾 Guardar en Base de Datos", use_container_width=True)
 
-        # 👑 CORONA DE LA MATRIZ: El letrero militar oscuro con letras doradas
+        # 👑 CORONA DE LA MATRIZ
         st.markdown("<div class='barra-matriz-oficial'>Matriz Oficial de Calificaciones</div>", unsafe_allow_html=True)
 
-        # 🧠 GENERADOR DE LOGICA ACADÉMICA SIMULADA (Muestra notas reales de auditoría)
-        # Replicamos de forma exacta el formato de la captura original para que veas el poder del software
+        # GENERADOR DE LOGICA ACADÉMICA SIMULADA
         asignaturas = ["Artistica", "Educación Física", "Ética", "Informática", "Inglés", "Lenguaje", "Matemáticas", "Religión", "Sociales", "Ciencias Naturales"]
         
         filas_matriz = []
         for _, row in df_filtrado.iterrows():
             for asig in asignaturas:
-                # Inyectamos notas de simulación para pintar la telemetría analítica en la pantalla
                 if asig == "Artistica": p1, p2, p3, p4 = 10.0, 9.0, 7.0, 9.0
                 elif asig == "Lenguaje": p1, p2, p3, p4 = 4.3, 8.2, 5.7, 4.4
                 elif asig == "Ética": p1, p2, p3, p4 = 9.6, 3.8, 4.0, 9.7
@@ -190,10 +189,9 @@ def ejecutar():
         
         df_final_render = pd.DataFrame(filas_matriz)
 
-        # ⚡ INYECCIÓN DE HIERRO: El motor Styler de Pandas procesa los colores automáticos
-        df_styled = df_final_render.style.applymap(colorear_planilla, subset=["P1", "P2", "P3", "P4", "Definitiva", "Desempeño"])
+        # ⚡ SOLUCIÓN DEL ERROR: Reemplazamos .applymap por .map para Pandas 2.0+
+        df_styled = df_final_render.style.map(colorear_planilla, subset=["P1", "P2", "P3", "P4", "Definitiva", "Desempeño"])
 
-        # Renderizado de la matriz con estilo inyectado en el motor de Streamlit
         st.dataframe(df_styled, use_container_width=True, hide_index=False)
         
     else:
