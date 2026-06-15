@@ -12,7 +12,7 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 # =================================================================
-# 🔌 CONEXIÓN SEGURA AL CENTRO DE DATOS (Sincronizada)
+# 🔒 CONEXIÓN SEGURA AL CENTRO DE DATOS (Sincronizada)
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].replace('"', '').replace("'", "").strip()
@@ -73,7 +73,6 @@ def ensamblar_pdf(datos_estudiante, llave_maestra, nombre_prueba):
     respuestas_alumno = datos_estudiante['respuestas_json']
     temas_a_reforzar = set()
     
-    # Tolerancia a mapeos estructurados como strings o listas
     claves_lista = []
     if isinstance(llave_maestra, str):
         claves_lista = [{"Pregunta": f"Pregunta {i+1}", "Respuesta Correcta": v.strip(), "Tema": "Concepto General"} for i, v in enumerate(llave_maestra.split(","))]
@@ -124,7 +123,6 @@ def ejecutar():
     .titulo-dashboard { color: #0d1b2a; border-bottom: 3px solid #d4af37; padding-bottom: 5px; font-family: 'Arial Black'; }
     .sub-seccion { color: #1b263b; font-family: 'Arial'; margin-top: 25px; border-left: 4px solid #d4af37; padding-left: 10px; }
     
-    /* FIX DE CONTRASTE: Eliminamos la palidez de textos y selectores superiores */
     button[data-baseweb="tab"] p, div[data-testid="stSelectbox"] label p, div[data-testid="stRadio"] p {
         color: #0d1b2a !important; font-weight: 800 !important; text-transform: uppercase; font-size: 13px !important;
     }
@@ -143,25 +141,24 @@ def ejecutar():
         st.error("⚠️ Falla de conexión con el centro de datos.")
         return
 
+    with st.spinner("Sincronizando registros académicos..."):
+        try:
+            res_respuestas = supabase.table("respuestas_estudiantes").select("*").execute()
+            datos_respuestas = res_respuestas.data
+            
+            res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
+            datos_pruebas = res_pruebas.data
+
+            res_estudiantes = supabase.table("data_estudiantes").select("*").execute()
+            datos_estudiantes = res_estudiantes.data
+        except Exception as e:
+            st.error(f"💥 Error en la sincronización de tablas: {e}")
+            return
+
     # Pestañas maestro
     tab_general, tab_periodos = st.tabs(["📈 Analítica General", "🗃️ Consolidación por Período (Migrar)"])
 
     with tab_general:
-        with st.spinner("Sincronizando registros académicos..."):
-            try:
-                res_respuestas = supabase.table("respuestas_estudiantes").select("*").execute()
-                datos_respuestas = res_respuestas.data
-                
-                res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
-                datos_pruebas = res_pruebas.data
-
-                # ⚡ SOLUCIÓN AL ERROR: Apuntamos directo a 'data_estudiantes' para evitar tablas fantasmas
-                res_estudiantes = supabase.table("data_estudiantes").select("*").execute()
-                datos_estudiantes = res_estudiantes.data
-            except Exception as e:
-                st.error(f"💥 Error en la sincronización de tablas: {e}")
-                return
-
         st.markdown("<h3 class='sub-seccion'>📋 Todos los Cuestionarios Registrados</h3>", unsafe_allow_html=True)
         
         if not datos_pruebas:
@@ -170,7 +167,10 @@ def ejecutar():
             lista_archivador = []
             for p in datos_pruebas:
                 fecha_p = p.get("created_at", "N/A")[:10] if p.get("created_at") else "N/A"
-                max_pts = float(p.get("puntaje_maximo", 5.0))
+                
+                # 🌟 PARACAÍDAS 1: Si el valor en la DB es NULL/None, usa 5.0 de forma segura
+                max_pts = float(p.get("puntaje_maximo") if p.get("puntaje_maximo") is not None else 5.0)
+                
                 lista_archivador.append({
                     "ID": p.get("id", p.get("id_prueba")),
                     "Nombre del Cuestionario": p["nombre"].upper(),
@@ -204,7 +204,9 @@ def ejecutar():
             with col_izq:
                 st.markdown("#### 📝 Detalles de Operación")
                 fecha_evaluacion = df_filtrado['fecha_formateada'].iloc[0] if not df_filtrado.empty else "Sin registros"
-                max_pts_maestra = float(datos_prueba_maestra.get("puntaje_maximo", 5.0))
+                
+                # 🌟 PARACAÍDAS 2: Evita la caída si la fila seleccionada tiene puntaje nulo
+                max_pts_maestra = float(datos_prueba_maestra.get("puntaje_maximo") if datos_prueba_maestra.get("puntaje_maximo") is not None else 5.0)
 
                 df_detalles_tabla = pd.DataFrame({
                     "Especificación": ["Examen Activo", "Asignatura", "Preguntas Totales", "Puntaje Máximo", "Último Escaneo"],
@@ -293,7 +295,6 @@ def ejecutar():
             else:
                 estudiantes_presentes = df_filtrado["estudiante"].dropna().astype(str).tolist()
                 
-                # Normalizamos las llaves de la respuesta de estudiantes a minúsculas
                 datos_est_limpios = []
                 if datos_estudiantes:
                     for e in datos_estudiantes:
@@ -368,6 +369,7 @@ def ejecutar():
                         datos_del_alumno = df_fuente_datos[df_fuente_datos['estudiante'] == alumno_pdf].iloc[0]
                         
                         try:
+                            # 🌟 PARACAÍDAS 3: Garantiza que la exportación individual herede el puntaje seguro
                             pdf_bytes = ensamblar_pdf(datos_del_alumno, llave_maestra, datos_prueba_maestra['nombre'])
                             st.download_button(
                                 label="⬇️ Descargar PDF",
