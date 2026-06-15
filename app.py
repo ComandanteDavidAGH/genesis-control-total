@@ -98,4 +98,4 @@ elif seleccion == "4. Escáner OMR" and pin_ingresado == CLAVE_MAESTRA:
 
 elif seleccion == "5. Dashboard Analítico" and pin_ingresado == CLAVE_MAESTRA:
     from modulos import m4_dashboard
-    m4_dashboard.ejecutar()
+    m4_dashboard.ejecutar() 
