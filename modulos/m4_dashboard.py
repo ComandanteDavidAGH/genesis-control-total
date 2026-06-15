@@ -1,198 +1,180 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import io
 from supabase import create_client, Client
 
 # =================================================================
-# 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
+# 🔒 ENLACE AL BÚNKER DE DATOS CENTRAL
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
     key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
+# =================================================================
+# 👑 INTERFAZ CENTRAL: DASHBOARD DE CONTROL ANALÍTICO
+# =================================================================
 def ejecutar():
-    # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN)
     st.markdown("""
         <style>
         .titulo-dash { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
         .subtitulo-dash { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
         
-        div[data-testid="stMainBlockContainer"] div[data-testid="stSelectbox"] label p {
-            color: #0d1b2a !important; font-weight: 800 !important; font-size: 13px !important; text-transform: uppercase;
+        /* Contenedor HUD de Métricas VIP */
+        .hud-dash {
+            background: linear-gradient(135deg, #0d1b2a 0%, #1a365d 100%);
+            border-left: 5px solid #d4af37; padding: 15px; border-radius: 8px; color: white;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.15); margin-bottom: 25px; display: flex;
+            justify-content: space-between; align-items: center;
         }
-        div[data-testid="stMainBlockContainer"] div[data-baseweb="select"] {
-            color: #0d1b2a !important; font-weight: bold !important;
-        }
+        .hud-item { text-align: center; flex: 1; }
+        .hud-title { font-size: 11px; font-weight: bold; color: #d4af37; text-transform: uppercase; margin:0; letter-spacing: 1px; }
+        .hud-value { font-size: 24px; font-family: 'Arial Black'; margin: 5px 0 0 0; }
+        
+        /* Tablas e Inputs de Alto Contraste */
+        .stSelectbox label p { color: #0d1b2a !important; font-weight: bold !important; text-transform: uppercase; }
+        div[data-baseweb="select"] { color: #0d1b2a !important; font-weight: bold !important; }
+        div[data-testid="stDataFrame"] { border: 2px solid #0d1b2a !important; border-radius: 6px; }
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<p class='titulo-dash'>📊 Dashboard Analítico e Informes</p>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitulo-dash'>Consola Central de Rendimiento y Exportación de Matrices de Calificación</p>", unsafe_allow_html=True)
+    st.markdown("<p class='titulo-dash'>📊 Centro de Control e Inteligencia Analítica</p>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitulo-dash'>Métricas Globales de Rendimiento, Sábanas Consolidadas y Curvas Estadísticas en Vivo</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     try:
         supabase = iniciar_conexion()
     except Exception:
-        st.error("⚠️ Falla de enlace con la base de datos central.")
+        st.error("🚨 Enlace satelital caído con el búnker de Supabase.")
         return
 
-    # 📥 DESCARGA DE COMPONENTES CRIPTOGRÁFICOS
-    with st.spinner("Sincronizando registros analíticos..."):
+    # 📥 DESCARGA DE SÁBANAS CONFIGURADAS (Exámenes y Notas)
+    with st.spinner("Sincronizando registros del búnker central..."):
         try:
             res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
             pruebas = res_pruebas.data
             
             res_notas = supabase.table("respuestas_estudiantes").select("*").execute()
-            notas_raw = res_notas.data
+            notas_totales = res_notas.data
         except Exception as e:
-            st.error(f"Error de lectura en el búnker: {e}")
+            st.error(f"🚨 Falla en la extracción perimetral de datos: {e}")
             return
 
     if not pruebas:
-        st.info("📭 No se registran evaluaciones maestras en el banco de datos para analizar.")
+        st.info("📭 No hay evaluaciones registradas en el sistema. Vaya al Módulo 2 para crear la primera.")
         return
 
-    # 🎛️ SELECTOR GENERAL DE PRUEBAS
-    diccionario_pruebas = {f"{p['nombre']} - {p['materia']}".strip().upper(): p for p in pruebas}
-    prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN MÁSTER PARA AUDITAR:", list(diccionario_pruebas.keys()))
-
-    # Filtrado dinámico de calificaciones
-    datos_prueba_activa = diccionario_pruebas[prueba_sel]
-    id_prueba_activa = datos_prueba_activa.get("id", datos_prueba_activa.get("id_prueba"))
+    # Indexar exámenes por nombre comercial
+    diccionario_pruebas = {f"{p.get('nombre', 'SIN NOMBRE')} - {p.get('materia', 'SIN MATERIA')}".upper(): p for p in pruebas}
     
-    df_notas = pd.DataFrame(notas_raw) if notas_raw else pd.DataFrame()
+    with st.container(border=True):
+        st.markdown("### 🎯 Perímetro de Inspección")
+        prueba_sel = st.selectbox("SELECCIONE LA EVALUACIÓN MÁSTER A AUDITAR:", list(diccionario_pruebas.keys()))
+        datos_examen = diccionario_pruebas[prueba_sel]
+
+    # Filtrar notas pertenecientes exclusivamente a este examen
+    id_prueba_actual = datos_examen.get("id_prueba") or datos_examen.get("id")
+    notas_filtradas = [n for n in notas_totales if str(n.get('id_prueba')) == str(id_prueba_actual)]
+
+    if not notas_filtradas:
+        st.warning("⚠️ Perímetro sin impactos: Ningún estudiante ha sido calificado aún para este examen (utilice el Escáner u OMR o Digitación Manual).")
+        return
+
+    # 📊 PROCESAMIENTO MATEMÁTICO DE DATOS (Pandas Core)
+    df_notas = pd.DataFrame(notas_filtradas)
+    df_notas['puntaje_obtenido'] = pd.to_numeric(df_notas['puntaje_obtenido'], errors='coerce')
+    df_notas['porcentaje'] = pd.to_numeric(df_notas['porcentaje'], errors='coerce')
+    df_notas['estudiante'] = df_notas['estudiante'].str.upper().str.strip()
+
+    # Variables Estadísticas de Combate
+    total_alumnos = len(df_notas)
+    nota_maxima_examen = float(datos_examen.get('puntaje_maximo', 5.0))
+    promedio_curso = df_notas['puntaje_obtenido'].mean()
+    nota_mas_alta = df_notas['puntaje_obtenido'].max()
     
-    if not df_notas.empty:
-        # Asegurar compatibilidad de columnas en minúsculas
-        df_notas.columns = [c.lower() for c in df_notas.columns]
-        df_notas = df_notas[df_notas['id_prueba'] == id_prueba_activa]
+    # Cálculo de tasa de aprobación (Alumnos con rendimiento >= 60%)
+    alumnos_aprobados = len(df_notas[df_notas['porcentaje'] >= 60.0])
+    tasa_aprobacion = (alumnos_aprobados / total_alumnos) * 100 if total_alumnos > 0 else 0
 
     # =================================================================
-    # 🗃️ PROCESAMIENTO Y LIMPIEZA DE COLUMNAS PARA EL PUENTE DE NOTAS
+    # 🏛️ DESPLIEGUE DEL HUD DE INTELIGENCIA MILITAR
     # =================================================================
-    df_informe_limpio = pd.DataFrame()
-    conteo_niveles = {"Bajo (<60%)": 0, "Básico (60-79%)": 0, "Alto (80-89%)": 0, "Superior (≥90%)": 0}
+    st.markdown(f"""
+        <div class="hud-dash">
+            <div class="hud-item">
+                <p class="hud-title">Alumnos Evaluados</p>
+                <p class="hud-value">📝 {total_alumnos} Alumnos</p>
+            </div>
+            <div class="hud-item" style="border-left: 2px solid rgba(255,255,255,0.1); border-right: 2px solid rgba(255,255,255,0.1);">
+                <p class="hud-title">Promedio del Curso</p>
+                <p class="hud-value">📉 {promedio_curso:.2f} / {nota_maxima_examen:.1f}</p>
+            </div>
+            <div class="hud-item" style="border-right: 2px solid rgba(255,255,255,0.1);">
+                <p class="hud-title">Nota Más Alta</p>
+                <p class="hud-value">🏆 {nota_mas_alta:.2f}</p>
+            </div>
+            <div class="hud-item">
+                <p class="hud-title">Tasa de Aprobación</p>
+                <p class="hud-value" style="color: {'#00ff66' if tasa_aprobacion >= 60 else '#ff3333'};">🔥 {tasa_aprobacion:.1f}%</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
-    if not df_notas.empty:
-        filas_limpias = []
-        for _, fila in df_notas.iterrows():
-            estudiante_str = str(fila.get('estudiante', 'ALUMNO ANÓNIMO'))
-            
-            # Algoritmo de extracción para separar "Nombre Alumno" y "Curso"
-            nombre_final = estudiante_str
-            curso_final = "SIN CURSO"
-            if "(" in estudiante_str and ")" in estudiante_str:
-                parts = estudiante_str.split("(")
-                nombre_final = parts[0].strip()
-                curso_final = parts[1].replace(")", "").strip()
+    # 🗂️ DIVISION DEL REPORTE EN PLATAFORMAS (TABS)
+    t1, t2 = st.tabs(["📋 Sábana Consolidada de Notas", "📈 Curva de Distribución de Niveles"])
 
-            pct = float(fila.get('porcentaje', 0.0))
-            nota = float(fila.get('puntaje_obtenido', 0.0))
-            max_p = float(fila.get('puntaje_maximo', 5.0))
-            
-            # Clasificación de rangos oficiales ZipGrade/Institucionales
-            if pct < 60.0:
-                nivel = "Bajo (<60%)"
-                estado = "REPROBADO ❌"
-                conteo_niveles["Bajo (<60%)"] += 1
-            elif 60.0 <= pct < 80.0:
-                nivel = "Básico (60-79%)"
-                estado = "APROBADO ✅"
-                conteo_niveles["Básico (60-79%)"] += 1
-            elif 80.0 <= pct < 90.0:
-                nivel = "Alto (80-89%)"
-                estado = "APROBADO ✅"
-                conteo_niveles["Alto (80-89%)"] += 1
-            else:
-                nivel = "Superior (≥90%)"
-                estado = "APROBADO ✅"
-                conteo_niveles["Superior (≥90%)"] += 1
-
-            filas_limpias.append({
-                "ESTUDIANTE MATRÍCULA": nombre_final.upper(),
-                "CURSO / GRADO": curso_final.upper(),
-                "NOTA LOGRADA": round(nota, 2),
-                "NOTA MÁXIMA": round(max_p, 2),
-                "EFECTIVIDAD %": f"{pct:.1f}%",
-                "RANGO COGNITIVO": nivel,
-                "ESTADO ACADÉMICO": estado
-            })
+    # -----------------------------------------------------------------
+    # TAB 1: SÁBANA CONSOLIDADA Y EXPORTACIÓN
+    # -----------------------------------------------------------------
+    with t1:
+        st.markdown("#### 📋 Planilla Oficial de Calificaciones")
+        st.info("💡 La siguiente tabla contiene los datos limpios indexados directamente desde el búnker de datos.")
         
-        df_informe_limpio = pd.DataFrame(filas_limpias).sort_values(by="ESTUDIANTE MATRÍCULA")
-
-    # =================================================================
-    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE (UX SIMÉTRICA)
-    # =================================================================
-    c1, c2 = st.columns([1, 1.2])
-    
-    with c1:
-        st.markdown("### 📝 Detalles de Operación")
-        tabla_detalles = pd.DataFrame({
-            "Especificación": ["Examen Activo", "Asignatura", "Preguntas Totales", "Puntaje Máximo", "Último Escaneo"],
-            "Detalle": [
-                str(datos_prueba_activa.get("nombre")).upper(),
-                str(datos_prueba_activa.get("materia")).upper(),
-                f"{datos_prueba_activa.get('total_preguntas', 10)} Ítems",
-                f"{datos_prueba_activa.get('puntaje_maximo', 5.0)} Pts",
-                "2026-06-15"
-            ]
-        })
-        st.dataframe(tabla_detalles, use_container_width=True, hide_index=True)
+        # Preparación de DataFrame Ejecutivo para visualización humana
+        df_ejecutivo = df_notas[['estudiante', 'puntaje_obtenido', 'porcentaje']].copy()
+        df_ejecutivo.columns = ['ESTUDIANTE / ALUMNO', 'NOTA OBTENIDA', 'RENDIMIENTO (%)']
+        df_ejecutivo = df_ejecutivo.sort_values(by='ESTUDIANTE / ALUMNO').reset_index(drop=True)
+        df_ejecutivo.index += 1 # Indexación amigable de 1 en adelante
         
-        # 📊 SECCIÓN DE DESCARGAS ANALÍTICAS (FRENTE A ACTIVADO)
-        st.markdown("### 📥 Descargar Reportes Masivos:")
+        # Visor de Datos
+        st.dataframe(df_ejecutivo, use_container_width=True)
         
-        if not df_informe_limpio.empty:
-            # 🟢 ENSAMBLADOR BINARIO PARA EXCEL MASTER
-            buffer_excel = io.BytesIO()
-            with pd.ExcelWriter(buffer_excel, engine='xlsxwriter') as writer:
-                df_informe_limpio.to_excel(writer, sheet_name='Calificaciones', index=False)
-                # Formateo automático de celdas internas de Excel para presentación ejecutiva
-                workbook = writer.book
-                worksheet = writer.sheets['Calificaciones']
-                worksheet.set_column('A:G', 22)
-            
-            # 🔵 ENSAMBLADOR BINARIO PARA CSV UNIVERSAL
-            buffer_csv = df_informe_limpio.to_csv(index=False).encode('utf-8')
-            
-            cx1, cx2, cx3 = st.columns(3)
-            cx1.download_button("🟢 Excel", data=buffer_excel.getvalue(), file_name=f"REPORTE_{datos_prueba_activa['nombre']}.xlsx", mime="application/vnd.ms-excel", use_container_width=True)
-            cx2.download_button("📄 CSV", data=buffer_csv, file_name=f"REPORTE_{datos_prueba_activa['nombre']}.csv", mime="text/csv", use_container_width=True)
-            cx3.button("🚀 Migrar", type="secondary", disabled=True, use_container_width=True, help="Conducto directo API automatizado.")
-        else:
-            st.warning("⚠️ Sin datos consolidados para exportar en esta prueba.")
-
-    with c2:
-        st.markdown("### 📊 Distribución de Puntuaciones")
-        df_grafico = pd.DataFrame({
-            "Nivel": list(conteo_niveles.keys()),
-            "Hojas": list(conteo_niveles.values())
-        })
+        # ⚡ BOTÓN MAESTRO DE DESCARGA: Conversión a CSV compatible directo con Excel
+        csv_buffer = df_ejecutivo.to_csv(index=False).encode('utf-8-sig') # utf-8-sig para que Excel respete tildes y Ñs
         
-        fig = px.bar(
-            df_grafico, x="Nivel", y="Hojas",
-            color="Nivel",
-            color_discrete_map={
-                "Bajo (<60%)": "#ff4b4b",
-                "Básico (60-79%)": "#ffaa00",
-                "Alto (80-89%)": "#38b000",
-                "Superior (≥90%)": "#007200"
-            },
-            text_auto=True,
-            height=320
+        st.download_button(
+            label="📥 EXPORTAR PLANILLA MAESTRA A EXCEL (.CSV)",
+            data=csv_buffer,
+            file_name=f"NOTAS_{datos_examen.get('nombre','EXAMEN').replace(' ','_')}.csv",
+            mime="text/csv",
+            use_container_width=True
         )
-        fig.update_layout(showlegend=False, margin=dict(l=10, r=10, t=10, b=10), xaxis_title=None)
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-    # =================================================================
-    # 📋 SECCIÓN INFERIOR: TABLERO GENERAL DE ASISTENCIA
-    # =================================================================
-    st.markdown("---")
-    st.markdown("### 📋 Control de Asistencia y Sabana Escaneada")
-    
-    if not df_informe_limpio.empty:
-        st.data_editor(df_informe_limpio, use_container_width=True, hide_index=True, disabled=True)
-    else:
-        st.info("💡 Consola Vacía: No se registran exámenes presentados para esta evaluación aún.")
+    # -----------------------------------------------------------------
+    # TAB 2: RENDIMIENTO ESTADÍSTICO VECTORIAL
+    # -----------------------------------------------------------------
+    with t2:
+        st.markdown("#### 📈 Histograma de Densidad y Calificaciones")
+        st.info("🤖 Esta gráfica clasifica a los estudiantes por rangos de rendimiento para identificar rápidamente baches de aprendizaje en el grupo.")
+        
+        try:
+            # Segmentar los rendimientos en contenedores tácticos (Rangos de notas)
+            intervalos = [0, 20, 40, 60, 80, 100]
+            etiquetas = ['Crítico (0-20%)', 'Bajo (21-40%)', 'Aceptable (41-60%)', 'Sobresaliente (61-80%)', 'Excelente (81-100%)']
+            
+            df_notas['Rango'] = pd.cut(df_notas['porcentaje'], bins=intervalos, labels=etiquetas, include_lowest=True)
+            distribucion = df_notas['Rango'].value_counts().reindex(etiquetas).fillna(0)
+            
+            # Gráfico de barras nativo Streamlit de alta velocidad
+            df_grafico = pd.DataFrame({'Cantidad de Alumnos': distribucion})
+            st.bar_chart(df_grafico, use_container_width=True)
+            
+            # Alerta analítica automatizada para el docente
+            if tasa_aprobacion < 50.0:
+                st.error(f"⚠️ **Alerta de Refuerzo:** Más de la mitad del curso se encuentra por debajo del umbral óptimo de aprobación. Se sugiere reprogramar competencias clave.")
+            else:
+                st.success(f"🎉 **Control de Perímetro Seguro:** El curso demuestra un ritmo de avance óptimo y dominancia temática.")
+        except Exception as e:
+            st.warning(f"Generando curva de nivel...: {e}")
+
+if __name__ == "__main__":
+    pass
