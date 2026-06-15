@@ -1,10 +1,9 @@
-import streamlit st
+import streamlit as st  # 🌟 ¡CORREGIDO AQUÍ!
 import pandas as pd
 from supabase import create_client
 
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
-    # Mantiene compatibilidad automática con tus credenciales seguras
     key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
@@ -60,7 +59,6 @@ def ejecutar():
         total_grados = df_unicos[col_grado].nunique() if col_grado in df_unicos.columns else 0
         total_grupos = df_unicos[col_grupo].nunique() if col_grupo in df_unicos.columns else 0
 
-        # Bloque estético HUD oficial
         st.markdown(f"""
             <div class="hud-container">
                 <div class="hud-card">
