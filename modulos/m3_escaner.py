@@ -84,13 +84,12 @@ def ejecutar():
             curso_alumno = st.text_input("👥 CURSO / GRADO DEL ALUMNO:", value=str(datos_examen.get('grado', ''))).strip().upper()
 
     # =================================================================
-    # 🛡️ EXTRACCIÓN DEFENSIVA DE COLUMNAS (EVITA KEYERROR)
+    # 🎯 ALINEACIÓN CON LAS LLAVES REALES DE TU SUPABASE
     # =================================================================
-    # Buscamos la clave usando múltiples variantes comunes por si acaso
-    clave_cruda = datos_examen.get('clave_respuestas') or datos_examen.get('clave') or datos_examen.get('respuestas') or datos_examen.get('respuestas_correctas')
+    clave_cruda = datos_examen.get('llave_maestra') or datos_examen.get('clave_respuestas')
     
     if clave_cruda is None:
-        st.error(f"❌ **Falla de Mapeo en Supabase:** No se detectó ninguna columna de respuestas compatible en tu registro. Columnas encontradas: `{list(datos_examen.keys())}`. Verifica los nombres de tus columnas en la base de datos.")
+        st.error(f"❌ Falla de mapeo crítico en las columnas.")
         return
 
     clave_maestra_lista = str(clave_cruda).split(',')
@@ -183,7 +182,9 @@ def ejecutar():
                     st.error("❌ Operación abortada: Es obligatorio introducir el nombre del estudiante para indexar la matrícula.")
                 else:
                     cadena_estudiante_completa = f"{nombre_alumno} ({curso_alumno if curso_alumno else 'GENERAL'})"
-                    id_prueba_activa = datos_examen.get("id", datos_examen.get("id_prueba"))
+                    
+                    # 📍 CORRECCIÓN: Indexamos usando la columna real 'id_prueba'
+                    id_prueba_activa = datos_examen.get("id_prueba") or datos_examen.get("id")
 
                     payload_nota = {
                         "id_prueba": id_prueba_activa,
