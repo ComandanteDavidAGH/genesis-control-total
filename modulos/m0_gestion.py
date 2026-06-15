@@ -34,10 +34,10 @@ def ejecutar():
         
         with st.spinner("Sincronizando base de datos masiva..."):
             while True:
-                # CORRECCIÓN OPTICA: Se cambia a 'estudiantes'
+                # TRUCO MAESTRO: select('*') evita errores de mayúsculas en el servidor
                 resultado = supabase.table("estudiantes")\
-                    .select('ID_Estudiante, Nombre_Completo, Grado, Grupo, "Correo Institucional"')\
-                    .order('ID_Estudiante')\
+                    .select('*')\
+                    .order('id_estudiante')\
                     .range(offset, offset + chunk_size - 1).execute()
                 if not resultado.data: break
                 estudiantes_base.extend(resultado.data)
@@ -48,11 +48,23 @@ def ejecutar():
         return
 
     if estudiantes_base:
-        df_unicos = pd.DataFrame(estudiantes_base).drop_duplicates(subset=["ID_Estudiante"])
+        df = pd.DataFrame(estudiantes_base)
+        
+        # Inteligencia Artificial Interna: Forzamos a minúsculas para inmunizar el código
+        df.columns = [c.lower() for c in df.columns]
+        
+        # Filtro de duplicados seguro
+        df_unicos = df.drop_duplicates(subset=["id_estudiante"])
         total_matricula = len(df_unicos)
-        total_grados = df_unicos["Grado"].nunique() if "Grado" in df_unicos.columns else 0
-        total_grupos = df_unicos["Grupo"].nunique() if "Grupo" in df_unicos.columns else 0
+        
+        # Buscador dinámico de columnas por si acaso cambian de nombre
+        col_grado = "grado" if "grado" in df.columns else df.columns[2]
+        col_grupo = "grupo" if "grupo" in df.columns else df.columns[3]
+        
+        total_grados = df_unicos[col_grado].nunique() if col_grado in df_unicos.columns else 0
+        total_grupos = df_unicos[col_grupo].nunique() if col_grupo in df_unicos.columns else 0
 
+        # HUD Táctico Flotante
         st.markdown(f"""
             <div class="hud-container">
                 <div class="hud-card">
@@ -71,8 +83,22 @@ def ejecutar():
         """, unsafe_allow_html=True)
 
         st.markdown('<div class="contenedor-matriz">', unsafe_allow_html=True)
-        st.markdown("<h4 style='color: #0d1b2a; font-weight: bold; margin-top: 0px;'>MATRIZ OFICIAL DE ESTUDIANTES MATRICULADOS</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #0d1b2a; font-weight: bold; margin-top: 0px; margin-bottom: 15px;'>MATRIZ OFICIAL DE ESTUDIANTES MATRICULADOS</h4>", unsafe_allow_html=True)
         
-        df_ordenado = df_unicos.sort_values(by="Nombre_Completo")
-        st.dataframe(df_ordenado[["ID_Estudiante", "Nombre_Completo", "Grado", "Grupo", "Correo Institucional"]], use_container_width=True, hide_index=True)
+        # Emparejamos los nombres para mostrarlos elegantes en la interfaz con mayúsculas
+        columnas_existentes = list(df.columns)
+        mapeo_visual = {}
+        for c in columnas_existentes:
+            if "id" in c: mapeo_visual[c] = "ID Estudiante"
+            elif "nombre" in c: mapeo_visual[c] = "Nombre Completo"
+            elif "grado" in c: mapeo_visual[c] = "Grado"
+            elif "grupo" in c: mapeo_visual[c] = "Grupo"
+            elif "correo" in c or "mail" in c: mapeo_visual[c] = "Correo Institucional"
+            else: mapeo_visual[c] = c.replace("_", " ").title()
+
+        df_visual = df_unicos.rename(columns=mapeo_visual)
+        col_orden = "Nombre Completo" if "Nombre Completo" in df_visual.columns else df_visual.columns[1]
+        
+        df_ordenado = df_visual.sort_values(by=col_orden)
+        st.dataframe(df_ordenado[list(mapeo_visual.values())], use_container_width=True, hide_index=True)
         st.markdown('</div>', unsafe_allow_html=True)
