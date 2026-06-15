@@ -3,11 +3,12 @@ import pandas as pd
 from supabase import create_client
 
 # =================================================================
-# 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
+# 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL (Llave Única Unificada)
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
-    key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
+    # Cambiado a tu llave estándar original para evitar cruce de bases de datos
+    key = st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
 # =================================================================
@@ -73,25 +74,22 @@ def ejecutar():
             return
 
     if not pruebas:
-        st.info("📭 No hay evaluaciones registradas en el sistema.")
+        st.info("📭 No hay evaluaciones registradas en el búnker de datos actual.")
         return
 
-    # 📡 INDICADOR DE TELEMETRÍA (Nos dirá cuántas filas reales lee de Supabase)
-    st.caption(f"📊 Telemetría del Sistema: {len(pruebas)} registros detectados en la tabla pruebas_maestras.")
+    # 📡 INDICADOR DE TELEMETRÍA CRUCIAL
+    st.markdown(f"📦 **Auditoría de Datos:** El búnker devolvió **{len(pruebas)}** evaluaciones totales.")
 
     # =================================================================
     # 🎯 TRUCO MAESTRO: ASIGNACIÓN FORZADA DE ID AL FRENTE
     # =================================================================
     diccionario_pruebas = {}
     for idx, p in enumerate(pruebas):
-        # Buscamos el ID real de la fila de forma segura
         id_real = buscar_campo(p, 'id_prueba', buscar_campo(p, 'id', idx))
-        
         nombre_raw = str(buscar_campo(p, 'nombre', 'EXAMEN')).strip().upper()
         materia_raw = str(buscar_campo(p, 'materia', 'MATERIA')).strip().upper()
         grado_raw = str(buscar_campo(p, 'grado', 'GENERAL')).strip().upper()
         
-        # Insertar el ID al inicio rompe cualquier duplicación en los nombres
         etiqueta_selector = f"[{id_real}] {nombre_raw} - {materia_raw} ({grado_raw})"
         diccionario_pruebas[etiqueta_selector] = p
 
