@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 
 # ⚙️ REGLA DE ORO: La configuración de página DEBE SER siempre la primera orden
 st.set_page_config(page_title="GÉNESIS v2.5", layout="wide", page_icon="⚙️")
@@ -13,17 +14,26 @@ st.markdown("""
 
 # Menú Lateral Institucional
 with st.sidebar:
+    # 🎯 RADAR DE PRECISIÓN: Localiza la carpeta exacta en el servidor Linux
+    base_dir = os.path.dirname(__file__)
+    ruta_logo = os.path.join(base_dir, "assets", "logo.png")
+    
+    # Si encuentra el logo lo proyecta arriba con simetría impecable
+    if os.path.exists(ruta_logo):
+        st.image(ruta_logo, use_container_width=True)
+        
     st.title("🛡️ Panel de Mando")
+    
     seleccion = st.radio("SELECCIONE EL MÓDULO:", [
         "0. Gestión de Estudiantes",
         "1. Creador de Pruebas",
         "2. Digitar Notas",
         "3. Escáner OMR",
         "4. Dashboard Analítico",
-        "5. Portal de Evaluación Estudiantil"  # 🌟 ¡NUEVA COORDENADA DE VUELO CONECTADA!
+        "5. Portal de Evaluación Estudiantil"
     ])
 
-# 🧭 ENRUTADOR INTELIGENTE DEL BÚNKER (¡TODOS LOS CABLES INTERCONECTADOS!)
+# 🧭 ENRUTADOR INTELIGENTE DEL BÚNKER (¡CONEXIONES INTACTAS!)
 if seleccion == "0. Gestión de Estudiantes":
     from modulos import m0_gestion
     m0_gestion.ejecutar()
@@ -44,10 +54,6 @@ elif seleccion == "4. Dashboard Analítico":
     from modulos import m4_dashboard
     m4_dashboard.ejecutar()
 
-elif seleccion == "5. Portal de Evaluación Estudiantil":  # 🌟 ENLACE DIGITAL ACTIVO
+elif seleccion == "5. Portal de Evaluación Estudiantil":  
     from modulos import m5_estudiante
     m5_estudiante.ejecutar()
-
-else:
-    st.title(seleccion)
-    st.info("Módulo en proceso de optimización óptica...")
