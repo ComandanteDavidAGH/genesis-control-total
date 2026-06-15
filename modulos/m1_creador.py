@@ -205,7 +205,7 @@ def ejecutar():
                 "grado": grado_final.strip().upper(),
                 "puntaje_maximo": puntaje_maximo,
                 "total_preguntas": total_preguntas_reales,
-                "clave_respuestas": clave_string
+                "llave_maestra": clave_string
             }
 
             with st.spinner("Inyectando registro en la base de datos central..."):
