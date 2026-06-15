@@ -12,31 +12,42 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Menú Lateral Institucional (¡Reorganizado con el Portal Estudiantil en el Segundo Puesto!)
+# Menú Lateral Institucional
 with st.sidebar:
     base_dir = os.path.dirname(__file__)
     ruta_logo = os.path.join(base_dir, "assets", "logo.png")
     
-    if os.path.exists(ruta_logo):
-        st.image(ruta_logo, use_container_width=True)
-        
-    st.title("🛡️ Panel de Mando")
+    # 🛡️ ESCUDO ANTI-CORRUPCIÓN: Si la imagen falla internamente, pasamos al texto de respaldo
+    mostrar_titulo_fallback = True
     
+    if os.path.exists(ruta_logo):
+        try:
+            st.image(ruta_logo, use_container_width=True)
+            mostrar_titulo_fallback = False  # Logrado. No duplicamos el título en texto
+        except Exception:
+            # Si el archivo está dañado en GitHub, la app lo ignora de forma segura y continúa
+            pass
+            
+    if mostrar_titulo_fallback:
+        st.title("🛡️ Panel de Mando")
+    else:
+        st.markdown("<h2 style='color: white; margin-top: -10px; margin-bottom: 15px;'>🛡️ Panel de Mando</h2>", unsafe_allow_html=True)
+        
     seleccion = st.radio("SELECCIONE EL MÓDULO:", [
         "0. Gestión de Estudiantes",
-        "1. Portal de Evaluación Estudiantil",  # 🌟 ¡Movido con éxito al segundo puesto!
+        "1. Portal de Evaluación Estudiantil",
         "2. Creador de Pruebas",
         "3. Digitar Notas",
         "4. Escáner OMR",
         "5. Dashboard Analítico"
     ])
 
-# 🧭 ENRUTADOR INTELIGENTE DEL BÚNKER (Cables redirigidos de forma consecutiva)
+# 🧭 ENRUTADOR INTELIGENTE DEL BÚNKER (¡CONEXIONES INTACTAS!)
 if seleccion == "0. Gestión de Estudiantes":
     from modulos import m0_gestion
     m0_gestion.ejecutar()
 
-elif seleccion == "1. Portal de Evaluación Estudiantil":  # 🛰️ Tu portal digital en su nueva coordenada
+elif seleccion == "1. Portal de Evaluación Estudiantil":  
     from modulos import m5_estudiante
     m5_estudiante.ejecutar()
 
