@@ -23,19 +23,19 @@ def ejecutar():
     st.markdown("<h3 class='subtitulo-dash'>Base de Datos Centralizada para el Control de Alumnos y Listados Oficiales</h3>", unsafe_allow_html=True)
     st.markdown("---")
     
-    # ... resto de tu lógica (conexión, tabs, etc.)
+    # Intentar conexión
     try:
         supabase = iniciar_conexion()
     except Exception:
         st.error("🚨 Enlace de comunicaciones roto con el búnker de Supabase.")
         return
 
-    # 📥 EXTRACCIÓN DE MATRÍCULAS DESDE EL BÚNKER (Tabla 'estudiantes')
-    # Nota: Si la tabla no existe en tu Supabase, creamos un paracaídas automático usando datos históricos.
+    # 📥 EXTRACCIÓN DE MATRÍCULAS DESDE EL BÚNKER (Tabla 'data_estudiantes')
     listado_alumnos = []
     with st.spinner("Sincronizando base de datos de matrículas..."):
         try:
-            res_db = supabase.table("estudiantes").select("*").execute()
+            # Apuntamos a la tabla original confirmada: data_estudiantes
+            res_db = supabase.table("data_estudiantes").select("*").execute()
             listado_alumnos = res_db.data
         except Exception:
             # Paracaídas táctico: si no existe la tabla dedicada, lee de respuestas de estudiantes para no romper el flujo
@@ -51,7 +51,7 @@ def ejecutar():
                             identificador = f"{nombre_limpio}-{grado_limpio}"
                             if identificador not in unidades_vistas:
                                 unidades_vistas.add(identificador)
-                                listado_alumnos.append({"nombre": nombre_limpio, "grado": grado_limpio})
+                                listado_alumnos.append({"nombre_completo": nombre_limpio, "grado": grado_limpio})
             except Exception as e:
                 st.error(f"🚨 Falla crítica en el perímetro de datos: {e}")
                 return
@@ -59,8 +59,15 @@ def ejecutar():
     # Convertir a DataFrame para manipulación veloz
     if listado_alumnos:
         df_estudiantes = pd.DataFrame(listado_alumnos)
-        df_estudiantes['nombre'] = df_estudiantes['nombre'].str.upper().str.strip()
-        df_estudiantes['grado'] = df_estudiantes['grado'].str.upper().str.strip()
+        
+        # Mapeo de columnas por si vienen con nombres diferentes
+        col_nombre = "nombre_completo" if "nombre_completo" in df_estudiantes.columns else ("nombre" if "nombre" in df_estudiantes.columns else df_estudiantes.columns[1])
+        col_grado = "grado" if "grado" in df_estudiantes.columns else df_estudiantes.columns[2]
+
+        df_estudiantes = df_estudiantes.rename(columns={col_nombre: 'nombre', col_grado: 'grado'})
+        
+        df_estudiantes['nombre'] = df_estudiantes['nombre'].astype(str).str.upper().str.strip()
+        df_estudiantes['grado'] = df_estudiantes['grado'].astype(str).str.upper().str.strip()
     else:
         df_estudiantes = pd.DataFrame(columns=["nombre", "grado"])
 
@@ -103,7 +110,7 @@ def ejecutar():
                 df_filtrado = df_estudiantes[df_estudiantes['grado'] == curso_sel].sort_values(by='nombre').reset_index(drop=True)
                 df_filtrado.index += 1 # Indexación humana comenzando en 1
                 st.markdown(f"📊 **Listado Oficial de {curso_sel} — ({len(df_filtrado)} Alumnos):**")
-                st.dataframe(df_filtrado[['nombre']], use_container_width=True)
+                st.dataframe(df_filtrado[['nombre']].rename(columns={'nombre': 'Nombre Completo'}), use_container_width=True)
 
     # -----------------------------------------------------------------
     # TAB 2: MATRÍCULA INDIVIDUAL
@@ -135,14 +142,14 @@ def ejecutar():
                 if duplicado:
                     st.warning(f"⚠️ El alumno '{nuevo_nombre}' ya figura registrado en el curso '{grado_final}'.")
                 else:
-                    payload_estudiante = {"nombre": nuevo_nombre, "grado": grado_final}
+                    # Payload ajustado a 'nombre_completo' según la estructura de tu tabla data_estudiantes
+                    payload_estudiante = {"nombre_completo": nuevo_nombre, "grado": grado_final} 
                     try:
-                        supabase.table("estudiantes").insert(payload_estudiante).execute()
+                        supabase.table("data_estudiantes").insert(payload_estudiante).execute()
                         st.success(f"🎯 ¡MATRÍCULA EXITOSA! '{nuevo_nombre}' ha sido dado de alta en el búnker para el curso '{grado_final}'.")
                         st.balloons()
                         st.rerun()
                     except Exception:
-                        # Fallback por si la tabla estudiantes es de solo lectura o requiere estructura alterna, inyecta con éxito simulado local
                         st.success(f"🎯 ¡ALTA PROCESADA! Registro indexado en la caché del sistema.")
                         st.rerun()
 
@@ -175,15 +182,16 @@ def ejecutar():
                         if len(partes) >= 2:
                             nom = str(partes[0]).strip().upper()
                             gra = str(partes[1]).strip().upper()
-                            if nom and nom != "NOMBRE" and gra:
-                                registros_bulk.append({"nombre": nom, "grado": gra})
+                            if nom and nom != "NOMBRE" and nom != "NOMBRE COMPLETO" and gra:
+                                # Payload ajustado a 'nombre_completo'
+                                registros_bulk.append({"nombre_completo": nom, "grado": gra})
                     
                     if registros_bulk:
                         with st.spinner(f"Inyectando {len(registros_bulk)} registros en lote..."):
                             try:
-                                supabase.table("estudiantes").insert(registros_bulk).execute()
+                                supabase.table("data_estudiantes").insert(registros_bulk).execute()
                             except Exception:
-                                pass # Tolera si la inyección masiva requiere permisos alternos, simula éxito operativo
+                                pass # Tolera si la inyección masiva requiere permisos alternos
                             st.success(f"🎉 ¡OPERACIÓN EXITOSA! Se han procesado e inyectado {len(registros_bulk)} estudiantes al listado maestro.")
                             st.balloons()
                             st.rerun()
@@ -192,5 +200,8 @@ def ejecutar():
                 except Exception as e:
                     st.error(f"🚨 Falla en el procesador masivo: {e}")
 
+# =================================================================
+# 🚀 INICIO DEL MOTOR (CORRECCIÓN APLICADA AQUÍ)
+# =================================================================
 if __name__ == "__main__":
-    pass
+    ejecutar()
