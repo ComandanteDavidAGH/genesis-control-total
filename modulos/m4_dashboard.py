@@ -1,11 +1,10 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import sys
 import os
 from supabase import create_client
 
-# 🛡️ PUENTE TÁCTICO DE RUTA
+# Puente para asegurar la importación de estilos globales desde la raíz
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from estilos_globales import inyectar_estilos_omega
 
@@ -13,48 +12,57 @@ def iniciar_conexion():
     return create_client(st.secrets["SUPABASE_URL"].strip(), st.secrets["SUPABASE_KEY"].strip())
 
 def ejecutar():
+    # 1. Inyección de estilos intacta
     inyectar_estilos_omega()
+    
+    # 2. Títulos y encabezado original
     st.markdown("<h1 class='titulo-dash'>📊 Dashboard Analítico e Informes</h1>", unsafe_allow_html=True)
     st.markdown("<h3 class='subtitulo-dash'>Consola Central de Rendimiento y Exportación de Matrices de Calificación</h3>", unsafe_allow_html=True)
     
     supabase = iniciar_conexion()
-
-    # 1. Traer TODAS las pruebas maestras
-    res_p = supabase.table("pruebas_maestras").select("*").execute()
-    pruebas = res_p.data
     
-    # 2. Traer TODAS las notas (la tabla de respuestas)
-    res_n = supabase.table("respuestas_estudiantes").select("*").execute()
-    notas = res_n.data
-    
-    if not pruebas:
-        st.info("📭 No hay evaluaciones en el sistema.")
+    # 3. CARGA MAESTRA: Obtenemos el catálogo completo de pruebas sin filtrar
+    try:
+        res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
+        pruebas_data = res_pruebas.data
+    except Exception as e:
+        st.error("Error conectando con pruebas_maestras")
         return
 
-    # 3. Mapeo: Creamos el índice de pruebas disponibles
-    mapa_pruebas = {f"{p.get('nombre')} - {p.get('materia')} ({p.get('grado')})": p for p in pruebas}
-    
-    # 4. Selector Maestro
-    seleccion = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN MÁSTER PARA AUDITAR:", list(mapa_pruebas.keys()))
-    
-    # 5. Cruce de Datos (Lógica de filtrado por ID)
-    prueba_activa = mapa_pruebas[seleccion]
-    id_activa = prueba_activa.get("id_prueba") or prueba_activa.get("id")
-    
-    # Filtramos el DataFrame de notas con los datos que llegaron de Supabase
-    df_notas = pd.DataFrame(notas)
-    if not df_notas.empty:
-        df_notas.columns = [c.lower() for c in df_notas.columns]
-        df_filtrado = df_notas[df_notas['id_prueba'] == id_activa]
-    else:
-        df_filtrado = pd.DataFrame()
+    if not pruebas_data:
+        st.info("No hay pruebas registradas para auditar.")
+        return
 
-    # 6. Mostrar resultados
-    st.markdown(f"### Resultados para: {seleccion}")
-    if not df_filtrado.empty:
-        st.dataframe(df_filtrado, use_container_width=True)
+    # 4. Construcción del catálogo para el Selectbox (tal como el inspector de grados)
+    # Usamos un diccionario para mapear la etiqueta visible al objeto de datos
+    catalogo = {}
+    for p in pruebas_data:
+        # Extraemos campos de forma segura
+        nombre = p.get('nombre', 'SIN NOMBRE')
+        materia = p.get('materia', 'SIN MATERIA')
+        grado = p.get('grado', 'SIN GRADO')
+        key = f"{nombre} - {materia} ({grado})"
+        catalogo[key] = p
+
+    # 5. Selector Maestro (Ahora sí muestra todas las opciones)
+    seleccion = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN MÁSTER PARA AUDITAR:", list(catalogo.keys()))
+    
+    # 6. Lógica de cruce con respuestas_estudiantes
+    prueba_activa = catalogo[seleccion]
+    id_prueba = prueba_activa.get("id_prueba") or prueba_activa.get("id")
+    
+    # Buscamos notas asociadas a este ID de prueba
+    res_notas = supabase.table("respuestas_estudiantes").select("*").eq("id_prueba", id_prueba).execute()
+    notas = res_notas.data
+    
+    st.markdown(f"---")
+    
+    if notas:
+        df = pd.DataFrame(notas)
+        # Mostramos los resultados en el formato tabla que ya tenías
+        st.dataframe(df, use_container_width=True)
     else:
-        st.warning("⚠️ No se encontraron notas para esta materia en la tabla de respuestas.")
+        st.warning("No hay notas registradas para esta evaluación seleccionada.")
 
 if __name__ == "__main__":
     ejecutar()
