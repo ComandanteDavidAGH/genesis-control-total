@@ -27,12 +27,20 @@ def ejecutar():
         st.error("🚨 Enlace de comunicaciones roto con el búnker de Supabase.")
         return
 
-    # 📥 EXTRACCIÓN DE MATRÍCULAS DESDE EL BÚNKER
+    # 📥 EXTRACCIÓN MASIVA DE MATRÍCULAS (CON PAGINACIÓN PARA 7772+ REGISTROS)
     listado_alumnos = []
-    with st.spinner("Sincronizando base de datos de matrículas..."):
+    with st.spinner("Sincronizando base de datos de matrículas (Leyendo miles de registros)..."):
         try:
-            res_db = supabase.table("data_estudiantes").select("*").execute()
-            listado_alumnos = res_db.data
+            # 🔥 CORRECCIÓN 1 y 2: Nombre correcto de la tabla y lectura en ráfagas de 1000
+            offset, chunk_size = 0, 1000
+            while True:
+                res_db = supabase.table("datos_estudiantes").select("*").range(offset, offset + chunk_size - 1).execute()
+                if not res_db.data:
+                    break
+                listado_alumnos.extend(res_db.data)
+                if len(res_db.data) < chunk_size:
+                    break
+                offset += chunk_size
         except Exception:
             try:
                 res_fallback = supabase.table("respuestas_estudiantes").select("estudiante").execute()
@@ -78,7 +86,7 @@ def ejecutar():
         df_estudiantes['nombre'] = df_estudiantes['nombre'].astype(str).str.upper().str.strip()
         df_estudiantes['grado'] = df_estudiantes['grado'].astype(str).str.upper().str.strip()
         
-        # 🔥 ESCUDO ANTI-CLONES ACTIVADO: Un solo registro por alumno y grado
+        # 🔥 ESCUDO ANTI-CLONES ACTIVADO: Filtra los 7,772 registros y deja solo a los reales
         df_estudiantes = df_estudiantes.drop_duplicates(subset=['nombre', 'grado']).reset_index(drop=True)
         
     else:
@@ -159,9 +167,10 @@ def ejecutar():
                 if duplicado:
                     st.warning(f"⚠️ El alumno '{nuevo_nombre}' ya figura registrado en el grado '{grado_final}'.")
                 else:
+                    # 🔥 CORRECCIÓN 3: Guardar en la tabla correcta
                     payload_estudiante = {"nombre_completo": nuevo_nombre, "grado": grado_final} 
                     try:
-                        supabase.table("data_estudiantes").insert(payload_estudiante).execute()
+                        supabase.table("datos_estudiantes").insert(payload_estudiante).execute()
                         st.success(f"🎯 ¡MATRÍCULA EXITOSA! '{nuevo_nombre}' ha sido dado de alta en el búnker para el grado '{grado_final}'.")
                         st.balloons()
                         st.rerun()
@@ -203,7 +212,8 @@ def ejecutar():
                     if registros_bulk:
                         with st.spinner(f"Inyectando {len(registros_bulk)} registros en lote..."):
                             try:
-                                supabase.table("data_estudiantes").insert(registros_bulk).execute()
+                                # 🔥 CORRECCIÓN 4: Guardar en la tabla correcta
+                                supabase.table("datos_estudiantes").insert(registros_bulk).execute()
                             except Exception:
                                 pass
                             st.success(f"🎉 ¡OPERACIÓN EXITOSA! Se han procesado e inyectado {len(registros_bulk)} estudiantes al listado maestro.")
