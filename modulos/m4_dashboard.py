@@ -13,15 +13,27 @@ def iniciar_conexion():
     return create_client(url, key)
 
 # =================================================================
-# 🛡️ SENSOR DETECTOR INALÁMBRICO DE COLUMNAS (Anti-Case-Sensitivity)
+# 🛡️ SENSOR DETECTOR INALÁMBRICO DE COLUMNAS (Versión Fail-Safe Pandas)
 # =================================================================
 def buscar_campo(diccionario, nombre_campo, predeterminado=""):
-    if not diccionario:
+    if diccionario is None:
         return predeterminado
-    for llave, valor in diccionario.items():
-        if llave.lower() == nombre_campo.lower():
-            if valor is not None and str(valor).strip().lower() not in ['none', 'null', '']:
-                return valor
+    
+    # ⚡ FIX DEFENSIVO: Evita la ambigüedad si el objeto es una Serie de Pandas
+    try:
+        if hasattr(diccionario, 'empty') and diccionario.empty:
+            return predeterminado
+    except:
+        pass
+
+    # Búsqueda segura e insensible a mayúsculas/minúsculas
+    try:
+        for llave, valor in diccionario.items():
+            if str(llave).lower() == nombre_campo.lower():
+                if valor is not None and str(valor).strip().lower() not in ['none', 'null', '']:
+                    return valor
+    except:
+        pass
     return predeterminado
 
 def ejecutar():
@@ -89,7 +101,6 @@ def ejecutar():
     df_notas = pd.DataFrame(notas_raw) if notas_raw else pd.DataFrame()
     
     if not df_notas.empty:
-        # Asegurar compatibilidad de columnas mediante mapeo inalámbrico seguro
         df_notas.columns = [c.lower() for c in df_notas.columns]
         df_notas = df_notas[df_notas['id_prueba'] == id_prueba_activa]
 
@@ -104,7 +115,6 @@ def ejecutar():
         for _, fila in df_notas.iterrows():
             estudiante_str = str(buscar_campo(fila, 'estudiante', 'ALUMNO ANÓNIMO'))
             
-            # Algoritmo de extracción para separar "Nombre Alumno" y "Curso"
             nombre_final = estudiante_str
             curso_final = "SIN CURSO"
             if "(" in estudiante_str and ")" in estudiante_str:
@@ -112,7 +122,6 @@ def ejecutar():
                 nombre_final = parts[0].strip()
                 curso_final = parts[1].replace(")", "").strip()
 
-            # Sanitización absoluta de variables numéricas contra nulos
             raw_pct = buscar_campo(fila, 'porcentaje', 0.0)
             try: pct = float(raw_pct)
             except: pct = 0.0
@@ -125,7 +134,6 @@ def ejecutar():
             try: max_p = float(raw_max_p)
             except: max_p = 5.0
             
-            # Clasificación de rangos oficiales ZipGrade/Institucionales
             if pct < 60.0:
                 nivel = "Bajo (<60%)"
                 estado = "REPROBADO ❌"
@@ -157,14 +165,13 @@ def ejecutar():
             df_informe_limpio = pd.DataFrame(filas_limpias).sort_values(by="ESTUDIANTE MATRÍCULA")
 
     # =================================================================
-    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE (UX SIMÉTRICA ORIGINAL)
+    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE
     # =================================================================
     c1, c2 = st.columns([1, 1.2])
     
     with c1:
         st.markdown("### 📝 Detalles de Operación")
         
-        # Filtros informativos blindados contra el error 'None Pts'
         max_p_display = float(buscar_campo(datos_prueba_activa, 'puntaje_maximo', 5.0))
         items_display = int(buscar_campo(datos_prueba_activa, 'total_preguntas', 10))
 
@@ -180,11 +187,9 @@ def ejecutar():
         })
         st.dataframe(tabla_detalles, use_container_width=True, hide_index=True)
         
-        # 📊 SECCIÓN DE DESCARGAS ANALÍTICAS
         st.markdown("### 📥 Descargar Reportes Masivos:")
         
         if not df_informe_limpio.empty:
-            # Ensamblador binario premium para Excel Master
             buffer_excel = io.BytesIO()
             with pd.ExcelWriter(buffer_excel, engine='xlsxwriter') as writer:
                 df_informe_limpio.to_excel(writer, sheet_name='Calificaciones', index=False)
@@ -197,7 +202,7 @@ def ejecutar():
             cx1, cx2, cx3 = st.columns(3)
             cx1.download_button("🟢 Excel", data=buffer_excel.getvalue(), file_name=f"REPORTE_{buscar_campo(datos_prueba_activa, 'nombre')}.xlsx", mime="application/vnd.ms-excel", use_container_width=True)
             cx2.download_button("📄 CSV", data=buffer_csv, file_name=f"REPORTE_{buscar_campo(datos_prueba_activa, 'nombre')}.csv", mime="text/csv", use_container_width=True)
-            cx3.button("🚀 Migrar", type="secondary", disabled=True, use_container_width=True, help="Conducto directo API automatizado.")
+            cx3.button("🚀 Migrar", type="secondary", disabled=True, use_container_width=True)
         else:
             st.warning("⚠️ Sin datos consolidados para exportar en esta prueba.")
 
@@ -224,7 +229,7 @@ def ejecutar():
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
     # =================================================================
-    # 📋 SECCIÓN INFERIOR: TABLERO GENERAL DE ASISTENCIA
+    # 📋 SECCIÓN INFERIOR: SABANA GENERAL DE NOTAS
     # =================================================================
     st.markdown("---")
     st.markdown("### 📋 Control de Asistencia y Sabana Escaneada")
