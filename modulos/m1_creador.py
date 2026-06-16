@@ -56,7 +56,7 @@ def ejecutar():
     st.markdown("### ⚙️ PASO 1: Configuración de la Evaluación")
     with st.container(border=True):
         r1_c1, r1_c2 = st.columns(2)
-        with r1_c1: nombre_evaluacion = st.text_input("🎯 NOMBRE DE LA EVALUACIÓN:", placeholder="Ej: Bimestral Segundo Periodo").strip().upper()
+        with r1_c1: nombre_evaluacion = st.text_input("🎯 NOMBRE DE LA EVALUACIÓN:", placeholder="Ej: Lectura Crítica Segundo Periodo").strip().upper()
         with r1_c2: grado_objetivo = st.selectbox("👥 CURSO / GRADO OBJETIVO:", lista_grados)
 
         r2_c1, r2_c2 = st.columns(2)
@@ -64,7 +64,8 @@ def ejecutar():
         with r2_c2: nota_maxima = st.number_input("💯 NOTA MÁXIMA:", min_value=1.0, max_value=10.0, value=5.0, step=0.1)
 
         r3_c1, r3_c2 = st.columns(2)
-        with r3_c1: tipo_evaluacion = st.selectbox("📝 TIPO:", ["QUIZ", "PARCIAL", "BIMESTRAL", "TALLER"])
+        # 🔥 AQUÍ ESTÁ EL AJUSTE INSTITUCIONAL SOLICITADO 🔥
+        with r3_c1: tipo_evaluacion = st.selectbox("📝 TIPO:", ["QUIZ", "TALLER", "EXPOSICIÓN", "EVALUACIÓN FINAL PERIODO"])
         with r3_c2: periodo_academico = st.selectbox("📂 PERIODO:", ["PRIMER PERIODO", "SEGUNDO PERIODO", "TERCER PERIODO", "CUARTO PERIODO"])
 
     # =================================================================
