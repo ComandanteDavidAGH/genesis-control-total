@@ -15,30 +15,8 @@ def iniciar_conexion():
 # 👑 INTERFAZ MASTER: GESTIÓN DE MATRÍCULAS Y ALUMNOS
 # =================================================================
 def ejecutar():
-    st.markdown("""
-        inyectar_estilos_omega()
-        .titulo-estudiantes { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
-        .subtitulo-estudiantes { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
-        .hud-estudiantes {
-            background: linear-gradient(135deg, #0d1b2a 0%, #1a365d 100%);
-            border-left: 5px solid #d4af37; padding: 15px; border-radius: 8px; color: white;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.15); margin-bottom: 25px; display: flex;
-            justify-content: space-between; align-items: center;
-        }
-        .hud-item { text-align: center; flex: 1; }
-        .hud-title { font-size: 11px; font-weight: bold; color: #d4af37; text-transform: uppercase; margin:0; letter-spacing: 1px; }
-        .hud-value { font-size: 22px; font-family: 'Arial Black'; margin: 5px 0 0 0; }
-        
-        /* Consistencia visual en formularios de alto contraste */
-        label p, .stSelectbox label p {
-            color: #0d1b2a !important; font-weight: bold !important; text-transform: uppercase; font-size: 12px;
-        }
-        div[data-baseweb="select"] {
-            color: #0d1b2a !important; font-weight: bold !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
+    # ⚡ Inyección visual unificada Génesis Omega Pro
+    inyectar_estilos_omega()
     st.markdown("<p class='titulo-estudiantes'>👥 Gestión y Matrícula de Estudiantes</p>", unsafe_allow_html=True)
     st.markdown("<p class='subtitulo-estudiantes'>Base de Datos Centralizada para el Control de Alumnos y Listados Oficiales</p>", unsafe_allow_html=True)
     st.markdown("---")
