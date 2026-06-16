@@ -17,10 +17,13 @@ def iniciar_conexion():
 def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro
     inyectar_estilos_omega()
-    st.markdown("<p class='titulo-estudiantes'>👥 Gestión y Matrícula de Estudiantes</p>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitulo-estudiantes'>Base de Datos Centralizada para el Control de Alumnos y Listados Oficiales</p>", unsafe_allow_html=True)
+    
+    # ✨ TÍTULOS BLINDADOS (Estandarizados con Omega Pro)
+    st.markdown("<h1 class='titulo-dash'>👥 GESTIÓN Y MATRÍCULA DE ESTUDIANTES</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 class='subtitulo-dash'>Base de Datos Centralizada para el Control de Alumnos y Listados Oficiales</h3>", unsafe_allow_html=True)
     st.markdown("---")
-
+    
+    # ... resto de tu lógica (conexión, tabs, etc.)
     try:
         supabase = iniciar_conexion()
     except Exception:
