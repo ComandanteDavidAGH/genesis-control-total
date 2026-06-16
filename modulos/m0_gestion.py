@@ -9,39 +9,8 @@ def iniciar_conexion():
     return create_client(url, key)
 
 def ejecutar():
-    # 🎨 INGENIERÍA ÓPTICA MAESTRA: CSS Premium de Asalto Institucional
-    st.markdown("""
-        <style>
-        /* Títulos e Identidad de la Central de Mando */
-        .titulo-nasa { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; letter-spacing: -0.5px; }
-        .subtitulo-nasa { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; letter-spacing: 1px; }
-        
-        /* HUD Cards Estilo Asimétrico de Alta Densidad */
-        .hud-nasa-container { display: flex; gap: 15px; margin-bottom: 25px; margin-top: 20px; }
-        .hud-nasa-card {
-            flex: 1; background: #f8f9fa; border-radius: 6px; padding: 12px 18px; 
-            text-align: left; border-left: 5px solid #0d1b2a;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-        }
-        .hud-nasa-label { font-size: 11px; font-weight: 900; color: #5c677d; text-transform: uppercase; letter-spacing: 1px; }
-        .hud-nasa-value { font-size: 28px; font-family: 'Arial Black'; font-weight: 900; color: #0d1b2a; margin-top: -2px; }
-        
-        /* Cinturón Militar Oscuro de la Matriz General */
-        .barra-matriz-oficial {
-            background-color: #0d1b2a; color: #d4af37; font-family: 'Arial Black';
-            font-size: 14px; text-transform: uppercase; text-align: center;
-            padding: 12px; border-radius: 6px 6px 0px 0px; letter-spacing: 1.5px;
-            margin-top: 15px;
-        }
-        
-        /* Contenedor Blindado para el Dataframe */
-        .contenedor-planilla { 
-            background: #ffffff; border-radius: 0px 0px 14px 14px; border: 1px solid #e5e5e5; 
-            padding: 20px; box-shadow: 0 15px 35px rgba(13, 27, 42, 0.05);
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
+    # ⚡ Inyección visual unificada Génesis Omega Pro
+    inyectar_estilos_omega()
     st.markdown("<p class='titulo-nasa'>👥 Gestión de Estudiantes</p>", unsafe_allow_html=True)
     st.markdown("<p class='subtitulo-nasa'>Consola Central de Control de Matrícula Institucional</p>", unsafe_allow_html=True)
     st.markdown("---")
