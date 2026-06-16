@@ -22,7 +22,7 @@ def ejecutar():
     st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #D97706; font-weight: bold; letter-spacing: 1px;'>CONSOLA CENTRAL DE CONTROL DE MATRÍCULA INSTITUCIONAL</p>", unsafe_allow_html=True)
     st.markdown("---")
 
-    # 📥 EXTRACCIÓN MASIVA POR PAGINACIÓN (Fiel a tus 750 alumnos reales)
+    # 📥 EXTRACCIÓN MASIVA POR PAGINACIÓN
     try:
         supabase = iniciar_conexion()
         estudiantes_base = []
@@ -101,9 +101,22 @@ def ejecutar():
         columnas_ordenadas = ["ID Estudiante", "Nombre Completo", "Grado", "Grupo", "Correo Institucional"]
         columnas_finales = [col for col in columnas_ordenadas if col in df_ordenado.columns] + [col for col in df_ordenado.columns if col not in columnas_ordenadas]
 
+        # 🎯 FILTRO ESTRATÉGICO POR GRADO
+        if "Grado" in df_ordenado.columns:
+            lista_grados_disponibles = ["TODOS LOS GRADOS"] + sorted(df_ordenado["Grado"].dropna().unique().tolist())
+            grado_seleccionado = st.selectbox("🔎 FILTRAR POR CURSO/GRADO:", lista_grados_disponibles)
+            
+            # Aplicar el filtro si no se seleccionó "TODOS"
+            if grado_seleccionado != "TODOS LOS GRADOS":
+                df_mostrar = df_ordenado[df_ordenado["Grado"] == grado_seleccionado]
+            else:
+                df_mostrar = df_ordenado
+        else:
+            df_mostrar = df_ordenado
+
         # Despliegue blindado del Dataframe sin índices feos
         with st.container(border=True):
-            st.dataframe(df_ordenado[columnas_finales], use_container_width=True, hide_index=True)
+            st.dataframe(df_mostrar[columnas_finales], use_container_width=True, hide_index=True)
             
     else:
         st.warning("📭 No se encontraron registros de estudiantes en el hangar de datos.")
