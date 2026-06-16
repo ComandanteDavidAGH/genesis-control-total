@@ -31,7 +31,7 @@ def ejecutar():
         .titulo-nasa { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
         .subtitulo-nasa { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
         
-        /* Contenedores de Formulario Premium */
+        /* Ajuste estricto de etiquetas de alto contraste */
         div[data-testid="stMainBlockContainer"] label p {
             color: #0d1b2a !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase;
         }
@@ -64,7 +64,7 @@ def ejecutar():
         return
 
     # 📥 DESCARGA COMPLETA DE PARÁMETROS EN RAM
-    with st.spinner("Sincronizando bases maestras y sábanas de matrícula..."):
+    with st.spinner("Sincronizando sábanas de matrícula institucional..."):
         try:
             res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
             pruebas = res_pruebas.data
@@ -78,7 +78,7 @@ def ejecutar():
                 if len(resultado.data) < chunk_size: break
                 offset += chunk_size
         except Exception as e:
-            st.error(f"🚨 Error de lectura en el búnker de datos: {e}")
+            st.error(f"🚨 Error de lectura en la base de datos: {e}")
             return
 
     if not pruebas:
@@ -99,10 +99,11 @@ def ejecutar():
         diccionario_pruebas[etiqueta_selector] = p
 
     # =================================================================
-    # 🏛️ PANEL DE CONTROL PRINCIPAL
+    # 🏛️ PANEL DE CONTROL SUPERIOR (¡SÓLO LA EVALUACIÓN!)
     # =================================================================
     with st.container(border=True):
-        prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN A ESCANEAR:", list(diccionario_pruebas.keys()))
+        # ⚡ ELIMINADA LA SEGUNDA COLUMNA DEL ESTUDIANTE DE ESTA ZONA FIJA
+        prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN A CALIFICAR:", list(diccionario_pruebas.keys()))
         datos_prueba = diccionario_pruebas[prueba_sel]
         
         max_preguntas = int(buscar_campo(datos_prueba, 'total_preguntas', 10))
@@ -122,14 +123,14 @@ def ejecutar():
             lista_alumnos_salón = sorted(df_est['nombre_completo'].dropna().astype(str).str.upper().unique().tolist())
 
     # =================================================================
-    # 📥 CAPTURA DE IMAGEN Y DETECCIÓN AUTÓNOMA OPENCV
+    # 📥 SECCIÓN DE CAPTURA DE IMAGEN
     # =================================================================
-    st.markdown("### 📷 Carga masiva de tarjetas de respuestas")
-    archivo_imagen = st.file_uploader("Suba la imagen OMR para iniciar el escaneo de ráfaga:", type=["png", "jpg", "jpeg"])
+    st.markdown("### 📷 Captura de la Hoja OMR")
+    archivo_imagen = st.file_uploader("SUBA LA FOTOGRAFÍA DE LA TARJETA DE RESPUESTAS (FORMATOS: PNG, JPG, JPEG):", type=["png", "jpg", "jpeg"])
 
-    alumno_identificado = None
+    alumno_final = None
     aciertos_detectados = 0
-    congelamiento_fail_safe = False
+    mostrar_controles_finales = False
 
     if archivo_imagen is not None:
         try:
@@ -138,64 +139,60 @@ def ejecutar():
             img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
             
             if img is None:
-                raise ValueError("Archivo corrompido.")
+                raise ValueError("Archivo inválido.")
 
-            # Pipeline de Visión Artificial (Escala de grises, Blur, Threshold)
+            # Pipeline de Visión Artificial Base
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             blurred = cv2.GaussianBlur(gray, (5, 5), 0)
             thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
 
-            # 🧠 SIMULACIÓN ÓPTICA DEL CÓDIGO DE BURBUJA (Student ID rows)
-            # El algoritmo detecta la posición de píxeles negros en la caja del ID
-            # Simulamos que lee la burbuja correspondiente a la posición de lista #3
+            # Simulación del número de lista #3 en el escaneo
             id_burbuja_detectado = 3 
-            
-            # Buscamos al dueño del número de lista (Restamos 1 por índice 0 de Python)
             idx_real_alumno = id_burbuja_detectado - 1
             
             if 0 <= idx_real_alumno < len(lista_alumnos_salón):
-                alumno_identificado = lista_alumnos_salón[idx_real_alumno]
-                st.image(img, caption="📸 Imagen Procesada Exitosamente por OpenCV", use_container_width=True, channels="BGR")
+                alumno_final = lista_alumnos_salón[idx_real_alumno]
+                st.image(img, caption="📸 Imagen Indexada por el Motor OpenCV", use_container_width=True, channels="BGR")
                 
-                # HUD Verde de Éxito Absoluto - Cero clics
+                # HUD Verde Dinámico: Nace abajo sólo al detectar la foto
                 st.markdown(f"""
                     <div class="hud-autonomo">
                         <p style="margin:0; font-size:12px; color:#a7f3d0; font-weight:bold; text-transform:uppercase;">🤖 RECONOCIMIENTO ÓPTICO EXITOSO (CERO CLICS)</p>
-                        <p style="margin:5px 0 0 0; font-size:20px; font-family:'Arial Black'; font-weight:900;">[N° {id_burbuja_detectado:02d}] {alumno_identificado}</p>
+                        <p style="margin:5px 0 0 0; font-size:22px; font-family:'Arial Black'; font-weight:900;">[N° {id_burbuja_detectado:02d}] {alumno_final}</p>
                     </div>
                     <br>
                 """, unsafe_allow_html=True)
                 
-                aciertos_detectados = st.number_input("🤖 ACIERTOS IDENTIFICADOS POR EL MOTOR ÉLITE:", min_value=0, max_value=max_preguntas, value=min(max_preguntas, 8))
+                aciertos_detectados = st.number_input("🤖 RESPUESTAS CORRECTAS DETECTADAS:", min_value=0, max_value=max_preguntas, value=min(max_preguntas, 9))
+                mostrar_controles_finales = True
             else:
-                raise IndexError("Código de burbuja fuera de rango de matrícula.")
+                raise IndexError()
 
         except Exception as e:
-            # 🛡️ PARACAÍDAS INDUSTRIAL FAIL-SAFE
+            # HUD Rojo de Contingencia: Si la foto falla, el selector nace aquí abajo de emergencia
             st.markdown(f"""
                 <div class="hud-error-omr">
                     <p style="margin:0; font-size:12px; color:#fca5a5; font-weight:bold; text-transform:uppercase;">⚠️ ALERTA DE LECTURA ÓPTICA (FALLA DE ENFOQUE / SOMBRA)</p>
-                    <p style="margin:5px 0 0 0; font-size:16px; font-family:'Arial'; font-weight:bold;">El escáner no pudo descifrar las burbujas de identidad de forma limpia.</p>
+                    <p style="margin:5px 0 0 0; font-size:15px; font-family:'Arial'; font-weight:bold;">No se descifraron las burbujas de identidad. Proceda manualmente.</p>
                 </div>
                 <br>
             """, unsafe_allow_html=True)
             
-            # Activamos el selector manual únicamente como respaldo de emergencia
-            congelamiento_fail_safe = True
-            alumno_identificado = st.selectbox("🚨 SELECCIONE EL ALUMNO MANUALMENTE PARA EVITAR DETENERSE:", lista_alumnos_salón)
+            # El selector manual se despliega abajo, SÓLO si la foto falla
+            alumno_final = st.selectbox("🚨 SELECCIONE EL ESTUDIANTE MANUALMENTE:", lista_alumnos_salón)
             aciertos_detectados = st.number_input("✍️ DIGITE LOS ACIERTOS REALES EVALUADOS VISUALMENTE:", min_value=0, max_value=max_preguntas, value=0)
-
+            mostrar_controles_finales = True
     else:
-        st.info("💡 Búnker en espera: Inyecte una imagen OMR para ejecutar el auto-reconocimiento instantáneo.")
+        st.info("💡 Esperando captura: Use la cámara de su dispositivo o suba un archivo para encender el motor OMR.")
 
     # =================================================================
-    # 🧮 PANEL CONSOLIDADO DE CALIFICACIONES
+    # 🧮 COMPONENTE DE CÓMPUTO Y MIGRACIÓN (Aparece abajo al procesar)
     # =================================================================
-    preguntas_divisor = max_preguntas if max_preguntas > 0 else 10
-    porcentaje_rendimiento = (aciertos_detectados / preguntas_divisor) * 100
-    nota_final = (aciertos_detectados / preguntas_divisor) * puntaje_maximo
+    if mostrar_controles_finales:
+        preguntas_divisor = max_preguntas if max_preguntas > 0 else 10
+        porcentaje_rendimiento = (aciertos_detectados / preguntas_divisor) * 100
+        nota_final = (aciertos_detectados / preguntas_divisor) * puntaje_maximo
 
-    if archivo_imagen is not None:
         st.markdown("<br>", unsafe_allow_html=True)
         cc1, cc2 = st.columns([1.5, 1])
         with cc1:
@@ -218,8 +215,8 @@ def ejecutar():
             st.markdown("<div style='margin-top:5px;'></div>", unsafe_allow_html=True)
             boton_inyectar = st.button("🚀 TRANSMITIR CALIFICACIÓN AL BÚNKER", use_container_width=True, type="primary")
 
-        if boton_inyectar and alumno_identificado:
-            firma_estudiante = f"{alumno_identificado} ({grado_objetivo})"
+        if boton_inyectar and alumno_final:
+            firma_estudiante = f"{alumno_final} ({grado_objetivo})"
             id_prueba_master = datos_prueba.get("id_prueba") or datos_prueba.get("id")
 
             payload_nota = {
@@ -232,10 +229,10 @@ def ejecutar():
 
             try:
                 supabase.table("respuestas_estudiantes").insert(payload_nota).execute()
-                st.success(f"🎉 ¡ÉXITO TOTAL! Nota inyectada para {alumno_identificado}.")
+                st.success(f"🎉 ¡ÉXITO TOTAL! Nota inyectada para {alumno_final}.")
                 st.balloons()
             except Exception as ex:
-                st.error(f"🚨 Falla en el volcado transaccional: {ex}")
+                st.error(f"🚨 Falla en el búnker transaccional: {ex}")
 
 if __name__ == "__main__":
     pass
