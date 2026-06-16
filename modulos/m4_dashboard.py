@@ -44,7 +44,7 @@ def ejecutar():
     with st.spinner("Sincronizando búnker de datos y cruzando telemetría..."):
         try:
             # 1. Extraemos los estudiantes y sus grados
-            res_estudiantes = supabase.table("datos_estudiantes").select("ID_Estudiante, Nombre_Completo, Grado").execute()
+            res_estudiantes = supabase.table("data_estudiantes").select("ID_Estudiante, Nombre_Completo, Grado").execute()
             df_estudiantes = pd.DataFrame(res_estudiantes.data)
             
             # 2. Extraemos las notas consolidadas
