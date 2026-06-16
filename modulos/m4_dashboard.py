@@ -2,18 +2,30 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import io
-from supabase import create_client, Client
+from supabase import create_client
 
 # =================================================================
-# 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
+# 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL (Llave Única Unificada)
 # =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
-    key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
+    key = st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
+# =================================================================
+# 🛡️ SENSOR DETECTOR INALÁMBRICO DE COLUMNAS (Anti-Case-Sensitivity)
+# =================================================================
+def buscar_campo(diccionario, nombre_campo, predeterminado=""):
+    if not diccionario:
+        return predeterminado
+    for llave, valor in diccionario.items():
+        if llave.lower() == nombre_campo.lower():
+            if valor is not None and str(valor).strip().lower() not in ['none', 'null', '']:
+                return valor
+    return predeterminado
+
 def ejecutar():
-    # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN)
+    # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN) - Tu estilo intacto
     st.markdown("""
         <style>
         .titulo-dash { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
@@ -55,21 +67,34 @@ def ejecutar():
         return
 
     # 🎛️ SELECTOR GENERAL DE PRUEBAS
-    diccionario_pruebas = {f"{p['nombre']} - {p['materia']}".strip().upper(): p for p in pruebas}
+    diccionario_pruebas = {}
+    for idx, p in enumerate(pruebas):
+        nombre_raw = str(buscar_campo(p, 'nombre', 'EXAMEN SIN NOMBRE')).strip().upper()
+        materia_raw = str(buscar_campo(p, 'materia', 'MATERIA')).strip().upper()
+        grado_raw = str(buscar_campo(p, 'grado', 'GENERAL')).strip().upper()
+        
+        etiqueta_selector = f"{nombre_raw} - {materia_raw} ({grado_raw})"
+        if etiqueta_selector in diccionario_pruebas:
+            id_seguro = p.get('id_prueba', p.get('id', idx))
+            etiqueta_selector = f"{etiqueta_selector} (ID: {id_seguro})"
+            
+        diccionario_pruebas[etiqueta_selector] = p
+
     prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN MÁSTER PARA AUDITAR:", list(diccionario_pruebas.keys()))
 
     # Filtrado dinámico de calificaciones
     datos_prueba_activa = diccionario_pruebas[prueba_sel]
-    id_prueba_activa = datos_prueba_activa.get("id", datos_prueba_activa.get("id_prueba"))
+    id_prueba_activa = datos_prueba_activa.get("id_prueba") or datos_prueba_activa.get("id")
     
     df_notas = pd.DataFrame(notas_raw) if notas_raw else pd.DataFrame()
     
     if not df_notas.empty:
+        # Asegurar compatibilidad de columnas mediante mapeo inalámbrico seguro
         df_notas.columns = [c.lower() for c in df_notas.columns]
         df_notas = df_notas[df_notas['id_prueba'] == id_prueba_activa]
 
     # =================================================================
-    # 🗃️ PROCESAMIENTO Y LIMPIEZA DE COLUMNAS PARA EL PUENTE DE NOTAS
+    # 🗃️ PROCESAMIENTO BIÓNICO Y LIMPIEZA DEL PUENTE DE NOTAS
     # =================================================================
     df_informe_limpio = pd.DataFrame()
     conteo_niveles = {"Bajo (<60%)": 0, "Básico (60-79%)": 0, "Alto (80-89%)": 0, "Superior (≥90%)": 0}
@@ -77,8 +102,9 @@ def ejecutar():
     if not df_notas.empty:
         filas_limpias = []
         for _, fila in df_notas.iterrows():
-            estudiante_str = str(fila.get('estudiante', 'ALUMNO ANÓNIMO'))
+            estudiante_str = str(buscar_campo(fila, 'estudiante', 'ALUMNO ANÓNIMO'))
             
+            # Algoritmo de extracción para separar "Nombre Alumno" y "Curso"
             nombre_final = estudiante_str
             curso_final = "SIN CURSO"
             if "(" in estudiante_str and ")" in estudiante_str:
@@ -86,16 +112,20 @@ def ejecutar():
                 nombre_final = parts[0].strip()
                 curso_final = parts[1].replace(")", "").strip()
 
-            # 🛡️ FILTRADO ULTRA-DEFENSIVO DE FILAS HISTÓRICAS
-            raw_pct = fila.get('porcentaje')
-            pct = float(raw_pct) if raw_pct is not None and str(raw_pct).strip().lower() not in ['none', 'null', ''] else 0.0
+            # Sanitización absoluta de variables numéricas contra nulos
+            raw_pct = buscar_campo(fila, 'porcentaje', 0.0)
+            try: pct = float(raw_pct)
+            except: pct = 0.0
 
-            raw_nota = fila.get('puntaje_obtenido')
-            nota = float(raw_nota) if raw_nota is not None and str(raw_nota).strip().lower() not in ['none', 'null', ''] else 0.0
+            raw_nota = buscar_campo(fila, 'puntaje_obtenido', 0.0)
+            try: nota = float(raw_nota)
+            except: nota = 0.0
 
-            raw_max_p = fila.get('puntaje_maximo')
-            max_p = float(raw_max_p) if raw_max_p is not None and str(raw_max_p).strip().lower() not in ['none', 'null', ''] else 5.0
+            raw_max_p = buscar_campo(fila, 'puntaje_maximo', 5.0)
+            try: max_p = float(raw_max_p)
+            except: max_p = 5.0
             
+            # Clasificación de rangos oficiales ZipGrade/Institucionales
             if pct < 60.0:
                 nivel = "Bajo (<60%)"
                 estado = "REPROBADO ❌"
@@ -123,51 +153,38 @@ def ejecutar():
                 "ESTADO ACADÉMICO": estado
             })
         
-        df_informe_limpio = pd.DataFrame(filas_limpias).sort_values(by="ESTUDIANTE MATRÍCULA")
+        if filas_limpias:
+            df_informe_limpio = pd.DataFrame(filas_limpias).sort_values(by="ESTUDIANTE MATRÍCULA")
 
     # =================================================================
-    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE
+    # 📐 DISTRIBUCIÓN GRÁFICA Y BLOQUES DE DETALLE (UX SIMÉTRICA ORIGINAL)
     # =================================================================
     c1, c2 = st.columns([1, 1.2])
     
     with c1:
         st.markdown("### 📝 Detalles de Operación")
         
-        # 🛡️ DETECTOR ABSOLUTO ANTI-CADENAS VACÍAS
-        raw_max_activa = datos_prueba_activa.get('puntaje_maximo')
-        if raw_max_activa is None or str(raw_max_activa).strip().lower() in ['none', 'null', '']:
-            max_p_display = 5.0
-        else:
-            try:
-                max_p_display = float(raw_max_activa)
-            except Exception:
-                max_p_display = 5.0
-
-        raw_items_activa = datos_prueba_activa.get('total_preguntas')
-        if raw_items_activa is None or str(raw_items_activa).strip().lower() in ['none', 'null', '']:
-            items_display = 10
-        else:
-            try:
-                items_display = int(raw_items_activa)
-            except Exception:
-                items_display = 10
+        # Filtros informativos blindados contra el error 'None Pts'
+        max_p_display = float(buscar_campo(datos_prueba_activa, 'puntaje_maximo', 5.0))
+        items_display = int(buscar_campo(datos_prueba_activa, 'total_preguntas', 10))
 
         tabla_detalles = pd.DataFrame({
             "Especificación": ["Examen Activo", "Asignatura", "Preguntas Totales", "Puntaje Máximo", "Último Escaneo"],
             "Detalle": [
-                str(datos_prueba_activa.get("nombre")).upper(),
-                str(datos_prueba_activa.get("materia")).upper(),
+                str(buscar_campo(datos_prueba_activa, 'nombre', 'EXAMEN')).upper(),
+                str(buscar_campo(datos_prueba_activa, 'materia', 'MATERIA')).upper(),
                 f"{items_display} Ítems",
-                f"{max_p_display:.1f} Pts", 
-                "2026-06-15"
+                f"{max_p_display:.1f} Pts",
+                "2026-06-16"
             ]
         })
         st.dataframe(tabla_detalles, use_container_width=True, hide_index=True)
         
-        # 📊 SECCIÓN DE DESCARGAS
+        # 📊 SECCIÓN DE DESCARGAS ANALÍTICAS
         st.markdown("### 📥 Descargar Reportes Masivos:")
         
         if not df_informe_limpio.empty:
+            # Ensamblador binario premium para Excel Master
             buffer_excel = io.BytesIO()
             with pd.ExcelWriter(buffer_excel, engine='xlsxwriter') as writer:
                 df_informe_limpio.to_excel(writer, sheet_name='Calificaciones', index=False)
@@ -178,8 +195,8 @@ def ejecutar():
             buffer_csv = df_informe_limpio.to_csv(index=False).encode('utf-8')
             
             cx1, cx2, cx3 = st.columns(3)
-            cx1.download_button("🟢 Excel", data=buffer_excel.getvalue(), file_name=f"REPORTE_{datos_prueba_activa['nombre']}.xlsx", mime="application/vnd.ms-excel", use_container_width=True)
-            cx2.download_button("📄 CSV", data=buffer_csv, file_name=f"REPORTE_{datos_prueba_activa['nombre']}.csv", mime="text/csv", use_container_width=True)
+            cx1.download_button("🟢 Excel", data=buffer_excel.getvalue(), file_name=f"REPORTE_{buscar_campo(datos_prueba_activa, 'nombre')}.xlsx", mime="application/vnd.ms-excel", use_container_width=True)
+            cx2.download_button("📄 CSV", data=buffer_csv, file_name=f"REPORTE_{buscar_campo(datos_prueba_activa, 'nombre')}.csv", mime="text/csv", use_container_width=True)
             cx3.button("🚀 Migrar", type="secondary", disabled=True, use_container_width=True, help="Conducto directo API automatizado.")
         else:
             st.warning("⚠️ Sin datos consolidados para exportar en esta prueba.")
@@ -216,3 +233,6 @@ def ejecutar():
         st.data_editor(df_informe_limpio, use_container_width=True, hide_index=True, disabled=True)
     else:
         st.info("💡 Consola Vacía: No se registran exámenes presentados para esta evaluación aún.")
+
+if __name__ == "__main__":
+    pass
