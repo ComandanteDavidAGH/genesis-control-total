@@ -14,8 +14,13 @@ def iniciar_conexion():
 def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro
     inyectar_estilos_omega()
-    st.markdown("<p class='subtitulo-dorado'>DISEÑO, ALMACENAMIENTO DE CLAVES DE RESPUESTAS Y GENERACIÓN AUTÓNOMA DE HOJAS OMR</p>", unsafe_allow_html=True)
+    
+    # ✨ TÍTULO BLINDADO (Reemplaza tu st.markdown previo)
+    st.markdown("<h1 class='titulo-dash'>📝 CREADOR Y DISEÑADOR DE PRUEBAS</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 class='subtitulo-dash'>Diseño, Almacenamiento de Claves y Generación de Hojas OMR</h3>", unsafe_allow_html=True)
+    st.markdown("---")
 
+    # ... (El resto de tu código sigue exactamente igual abajo)
     try:
         supabase = iniciar_conexion()
     except Exception:
