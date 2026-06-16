@@ -1,8 +1,11 @@
 import streamlit as st
-from estilos_globales import inyectar_estilos_omega  # <--- ESTA ES LA LÍNEA NUEVA
+from estilos_globales import inyectar_estilos_omega
 import pandas as pd
 from supabase import create_client
 
+# =================================================================
+# 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
+# =================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
     key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
@@ -11,8 +14,12 @@ def iniciar_conexion():
 def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro
     inyectar_estilos_omega()
-    st.markdown("<p class='titulo-nasa'>👥 Gestión de Estudiantes</p>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitulo-nasa'>Consola Central de Control de Matrícula Institucional</p>", unsafe_allow_html=True)
+    
+    # ==========================================
+    # 📊 ENCABEZADO PRINCIPAL DE ALTO IMPACTO
+    # ==========================================
+    st.markdown("<h1 style='text-align: center; color: #0F172A; font-size: 3rem;'>👥 Gestión de Estudiantes</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #D97706; font-weight: bold; letter-spacing: 1px;'>CONSOLA CENTRAL DE CONTROL DE MATRÍCULA INSTITUCIONAL</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     # 📥 EXTRACCIÓN MASIVA POR PAGINACIÓN (Fiel a tus 750 alumnos reales)
@@ -54,26 +61,26 @@ def ejecutar():
         total_grados = df_unicos[col_grado].nunique() if col_grado in df_unicos.columns else 0
         total_grupos = df_unicos[col_grupo].nunique() if col_grupo in df_unicos.columns else 0
 
-        # ⚡ INDICADORES HUD DE ALTA DENSIDAD VISUAL (Mismo formato de notas)
-        st.markdown(f"""
-            <div class="hud-nasa-container">
-                <div class="hud-nasa-card">
-                    <div class="hud-nasa-label">MATRÍCULA TOTAL ACTIVA</div>
-                    <div class="hud-nasa-value">{total_matricula}</div>
-                </div>
-                <div class="hud-nasa-card" style="border-left-color: #d4af37;">
-                    <div class="hud-nasa-label" style="color: #bfa12a;">GRADOS ACTIVOS</div>
-                    <div class="hud-nasa-value" style="color: #d4af37;">{total_grados}</div>
-                </div>
-                <div class="hud-nasa-card" style="border-left-color: #2b9348;">
-                    <div class="hud-nasa-label" style="color: #2b9348;">GRUPOS OPERATIVOS</div>
-                    <div class="hud-nasa-value" style="color: #2b9348;">{total_grupos}</div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        # =================================================================
+        # 📈 PANEL DE INDICADORES (HUD OMEGA)
+        # =================================================================
+        st.markdown("### 📊 Panel de Indicadores Globales")
+        with st.container(border=True):
+            c1, c2, c3 = st.columns(3)
+            
+            with c1:
+                st.markdown(f"<div style='text-align: center;'><h4 style='color: #64748B; margin-bottom: 0px;'>MATRÍCULA TOTAL ACTIVA</h4><h2 style='color: #0F172A; font-size: 2.5rem; margin-top: 0px;'>{total_matricula}</h2></div>", unsafe_allow_html=True)
+            with c2:
+                st.markdown(f"<div style='text-align: center; border-left: 2px solid #E2E8F0; border-right: 2px solid #E2E8F0;'><h4 style='color: #D97706; margin-bottom: 0px;'>GRADOS ACTIVOS</h4><h2 style='color: #D97706; font-size: 2.5rem; margin-top: 0px;'>{total_grados}</h2></div>", unsafe_allow_html=True)
+            with c3:
+                st.markdown(f"<div style='text-align: center;'><h4 style='color: #16A34A; margin-bottom: 0px;'>GRUPOS OPERATIVOS</h4><h2 style='color: #16A34A; font-size: 2.5rem; margin-top: 0px;'>{total_grupos}</h2></div>", unsafe_allow_html=True)
 
-        # 👑 CINTURÓN MILITAR OSCURO DE LA MATRIZ GENERAL
-        st.markdown("<div class='barra-matriz-oficial'>Matriz Maestro de Estudiantes Registrados</div>", unsafe_allow_html=True)
+        # =================================================================
+        # 📋 MATRIZ OFICIAL DE ESTUDIANTES
+        # =================================================================
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("### 📋 Matriz Oficial de Estudiantes Registrados")
+        st.info("💡 Esta tabla muestra el consolidado maestro. Úsela para auditar que todos los estudiantes de su institución estén correctamente cargados en el sistema.")
 
         # Mapeo y ordenamiento estricto de columnas para los reportes oficiales
         mapeo_visual = {}
@@ -95,8 +102,11 @@ def ejecutar():
         columnas_finales = [col for col in columnas_ordenadas if col in df_ordenado.columns] + [col for col in df_ordenado.columns if col not in columnas_ordenadas]
 
         # Despliegue blindado del Dataframe sin índices feos
-        st.markdown('<div class="contenedor-planilla">', unsafe_allow_html=True)
-        st.dataframe(df_ordenado[columnas_finales], use_container_width=True, hide_index=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            st.dataframe(df_ordenado[columnas_finales], use_container_width=True, hide_index=True)
+            
     else:
         st.warning("📭 No se encontraron registros de estudiantes en el hangar de datos.")
+
+if __name__ == "__main__":
+    ejecutar()
