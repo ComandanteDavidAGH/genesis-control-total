@@ -16,7 +16,7 @@ def iniciar_conexion():
 # =================================================================
 def ejecutar():
     st.markdown("""
-        <style>
+        inyectar_estilos_omega()
         .titulo-estudiantes { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
         .subtitulo-estudiantes { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
         .hud-estudiantes {
