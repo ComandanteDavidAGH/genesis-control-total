@@ -29,8 +29,11 @@ def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro
     inyectar_estilos_omega()
 
-    st.markdown("<p class='titulo-nasa'>📸 Escáner Óptico Inteligente v2.6</p>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitulo-nasa'>Identificación Autónoma por Burbuja de Identidad y Mapeo Indexado de Asignaturas</p>", unsafe_allow_html=True)
+    # ==========================================
+    # 📊 ENCABEZADO PRINCIPAL DE ALTO IMPACTO
+    # ==========================================
+    st.markdown("<h1 style='text-align: center; color: #0F172A; font-size: 3rem;'>📸 Motor de Escaneo OMR v2.6</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #D97706; font-weight: bold; letter-spacing: 1px;'>IDENTIFICACIÓN AUTÓNOMA Y MAPEO INDEXADO DE ASIGNATURAS</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     try:
@@ -79,8 +82,10 @@ def ejecutar():
         lista_grados_disponibles = ["3°", "SEXTO A", "SÉPTIMO A"]
 
     # =================================================================
-    # 🏛️ PANEL DE CONTROL COMPLETO (Sincronía Simétrica Absoluta)
+    # 🏛️ PASO 1: PANEL DE CONTROL COMPLETO (Sincronía Simétrica Absoluta)
     # =================================================================
+    st.markdown("### ⚙️ PASO 1: Parámetros de Calibración")
+    
     with st.container(border=True):
         c1, c2 = st.columns(2)
         with c1:
@@ -102,7 +107,7 @@ def ejecutar():
                 st.success(f"🔑 Matriz de respuestas detectada en el búnker para este curso ({max_preguntas} Preguntas).")
             else:
                 max_preguntas = st.number_input("📋 CANTIDAD DE PREGUNTAS DEL EXAMEN:", min_value=1, max_value=100, value=10, step=1)
-                st.caption("ℹ️ Nota: No se detectó plantilla previa. Se aplicará calibración estándar sobre base 5.0.")
+                st.info("ℹ️ Sistema OMR: No se detectó plantilla previa. Se aplicará calibración estándar sobre base 5.0.")
 
     lista_alumnos_salón = []
     if not df_est.empty:
@@ -113,9 +118,11 @@ def ejecutar():
         lista_alumnos_salón = ["SIN ALUMNOS REGISTRADOS EN ESTE GRADO"]
 
     # =================================================================
-    # 📥 SECCIÓN DE CAPTURA DE IMAGEN GRÁFICA
+    # 📥 PASO 2: SECCIÓN DE CAPTURA DE IMAGEN GRÁFICA
     # =================================================================
-    st.markdown("### 📷 Captura de la Hoja OMR")
+    st.markdown("---")
+    st.markdown("### 📷 PASO 2: Procesamiento y Escaneo de la Hoja OMR")
+    
     archivo_imagen = st.file_uploader("SUBA LA FOTOGRAFÍA DE LA TARJETA DE RESPUESTAS (FORMATOS: PNG, JPG, JPEG):", type=["png", "jpg", "jpeg"])
 
     alumno_final = None
