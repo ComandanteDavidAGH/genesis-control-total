@@ -12,28 +12,8 @@ def iniciar_conexion():
     return create_client(url, key)
 
 def ejecutar():
-    # 🎨 INJECTION VISUAL (GÉNESIS HIGH-CONTRAST DESIGN) - Tu estilo premium intacto
-    st.markdown("""
-        <style>
-        .titulo-nasa { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
-        .subtitulo-nasa { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
-        
-        /* Contenedores de Formulario Premium */
-        div[data-testid="stMainBlockContainer"] label p {
-            color: #0d1b2a !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase;
-        }
-        div[data-baseweb="select"] {
-            color: #0d1b2a !important; font-weight: bold !important;
-        }
-        
-        /* HUD de Rendimiento en Tiempo Real */
-        .hud-digitar {
-            background: linear-gradient(135deg, #0d1b2a 0%, #1a365d 100%);
-            border-radius: 6px; padding: 15px; color: white; text-align: center;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
+    # ⚡ Inyección visual unificada Génesis Omega Pro
+    inyectar_estilos_omega()
     st.markdown("<p class='titulo-nasa'>📝 Formato de Carga Directa</p>", unsafe_allow_html=True)
     st.markdown("---")
 
