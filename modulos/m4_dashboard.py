@@ -39,19 +39,9 @@ def buscar_campo(diccionario, nombre_campo, predeterminado=""):
 
 def ejecutar():
     # 🎨 INYECCIÓN VISUAL QUIRÚRGICA (GÉNESIS HIGH-CONTRAST DESIGN) - Tu estilo intacto
-    st.markdown("""
-        <style>
-        .titulo-dash { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
-        .subtitulo-dash { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
-        
-        div[data-testid="stMainBlockContainer"] div[data-testid="stSelectbox"] label p {
-            color: #0d1b2a !important; font-weight: 800 !important; font-size: 13px !important; text-transform: uppercase;
-        }
-        div[data-testid="stMainBlockContainer"] div[data-baseweb="select"] {
-            color: #0d1b2a !important; font-weight: bold !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    def ejecutar():
+    # ⚡ Inyección visual unificada Génesis Omega Pro
+    inyectar_estilos_omega()
 
     st.markdown("<p class='titulo-dash'>📊 Dashboard Analítico e Informes</p>", unsafe_allow_html=True)
     st.markdown("<p class='subtitulo-dash'>Consola Central de Rendimiento y Exportación de Matrices de Calificación</p>", unsafe_allow_html=True)
