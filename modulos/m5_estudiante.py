@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 from estilos_globales import inyectar_estilos_omega
-
-# 👇 NUEVA LLAVE MAESTRA PARA LA BASE DE DATOS
 from supabase import create_client
 
 # ==========================================
@@ -29,8 +27,7 @@ def ejecutar():
         st.error("🚨 Enlace de comunicaciones roto con el búnker de Supabase.")
         return
 
-# ... (DE AQUÍ EN ADELANTE, DEJA EL RESTO DE TU CÓDIGO EXACTAMENTE IGUAL) ...
-    # 📥 EXTRACCIÓN DE MATRÍCULAS DESDE EL BÚNKER (Tabla 'data_estudiantes')
+    # 📥 EXTRACCIÓN DE MATRÍCULAS DESDE EL BÚNKER
     listado_alumnos = []
     with st.spinner("Sincronizando base de datos de matrículas..."):
         try:
@@ -63,13 +60,11 @@ def ejecutar():
         
         col_nombre = "nombre_completo" if "nombre_completo" in df_estudiantes.columns else ("nombre" if "nombre" in df_estudiantes.columns else df_estudiantes.columns[1])
         
-        # 🔥 FUSIÓN DE GRADOS BLINDADA
-        if "grado" in df_estudiantes.columns and "grupo" in df_estudiantes.columns:
-            grados_unidos = df_estudiantes['grado'].astype(str).str.strip() + " " + df_estudiantes['grupo'].astype(str).str.strip()
-        elif "grado" in df_estudiantes.columns:
-            grados_unidos = df_estudiantes['grado'].astype(str).str.strip()
+        # 🔥 EXTRACCIÓN DE GRADO PLANO (Sin letras/grupos)
+        if "grado" in df_estudiantes.columns:
+            grados_planos = df_estudiantes['grado'].astype(str).str.strip()
         else:
-            grados_unidos = df_estudiantes.iloc[:, 2].astype(str).str.strip()
+            grados_planos = df_estudiantes.iloc[:, 2].astype(str).str.strip()
 
         # 🧹 BARRIDO DE COLUMNAS: Eliminamos las columnas viejas que causan conflicto
         cols_a_borrar = [col for col in ['grado', 'grupo', 'curso_unificado'] if col in df_estudiantes.columns]
@@ -77,13 +72,13 @@ def ejecutar():
 
         # Asignamos nombres limpios
         df_estudiantes = df_estudiantes.rename(columns={col_nombre: 'nombre'})
-        df_estudiantes['grado'] = grados_unidos
+        df_estudiantes['grado'] = grados_planos
         
-        # Aplicamos mayúsculas sin temor a que explote Pandas
+        # Aplicamos mayúsculas
         df_estudiantes['nombre'] = df_estudiantes['nombre'].astype(str).str.upper().str.strip()
         df_estudiantes['grado'] = df_estudiantes['grado'].astype(str).str.upper().str.strip()
         
-        # 🔥 ESCUDO ANTI-CLONES: Dejar solo un registro único por estudiante y grado
+        # 🔥 ESCUDO ANTI-CLONES ACTIVADO: Un solo registro por alumno y grado
         df_estudiantes = df_estudiantes.drop_duplicates(subset=['nombre', 'grado']).reset_index(drop=True)
         
     else:
@@ -123,14 +118,13 @@ def ejecutar():
         else:
             grados_disponibles = sorted(df_estudiantes['grado'].unique().tolist())
             
-            # 🔥 SOLUCIÓN DE ANCHO: Encapsulado en columnas (1/3 selector, 2/3 vacío)
             c1, c2 = st.columns([1, 2])
             with c1:
                 curso_sel = st.selectbox("Seleccione el Grado a auditar:", grados_disponibles)
             
             if curso_sel:
                 df_filtrado = df_estudiantes[df_estudiantes['grado'] == curso_sel].sort_values(by='nombre').reset_index(drop=True)
-                df_filtrado.index += 1 # Indexación humana comenzando en 1
+                df_filtrado.index += 1
                 st.markdown(f"📊 **Listado Oficial de {curso_sel} — ({len(df_filtrado)} Alumnos):**")
                 st.dataframe(df_filtrado[['nombre']].rename(columns={'nombre': 'Nombre Completo'}), use_container_width=True)
 
@@ -142,17 +136,16 @@ def ejecutar():
         with st.form("form_alta_individual", clear_on_submit=True):
             nuevo_nombre = st.text_input("👤 NOMBRE COMPLETO DEL ESTUDIANTE:", placeholder="Ej: PÉREZ CASAS, CARLOS ALBERTO").strip().upper()
             
-            grados_drop = sorted(df_estudiantes['grado'].unique().tolist()) if total_matriculados > 0 else ["10° A", "10° B", "11° A"]
+            grados_drop = sorted(df_estudiantes['grado'].unique().tolist()) if total_matriculados > 0 else ["1°", "2°", "3°", "4°", "5°", "6°", "7°", "8°", "9°", "10°", "11°"]
             grados_drop.append("[+ CREAR NUEVO GRADO...]")
             
-            # También lo encapsulamos para que mantenga el estándar visual
             c_grado, c_vacia = st.columns([1, 1])
             with c_grado:
                 grado_sel = st.selectbox("👥 ASIGNAR GRADO / CURSO:", grados_drop, index=0)
             
             grado_nuevo_txt = ""
             if grado_sel == "[+ CREAR NUEVO GRADO...]":
-                grado_nuevo_txt = st.text_input("✍️ Escriba el nombre del nuevo Grado/Curso:").strip().upper()
+                grado_nuevo_txt = st.text_input("✍️ Escriba el nombre del nuevo Grado:").strip().upper()
                 
             boton_matricular = st.form_submit_button("🚀 EFECTUAR MATRÍCULA DE ESTUDIANTE", use_container_width=True)
 
@@ -164,12 +157,12 @@ def ejecutar():
             else:
                 duplicado = not df_estudiantes[(df_estudiantes['nombre'] == nuevo_nombre) & (df_estudiantes['grado'] == grado_final)].empty
                 if duplicado:
-                    st.warning(f"⚠️ El alumno '{nuevo_nombre}' ya figura registrado en el curso '{grado_final}'.")
+                    st.warning(f"⚠️ El alumno '{nuevo_nombre}' ya figura registrado en el grado '{grado_final}'.")
                 else:
                     payload_estudiante = {"nombre_completo": nuevo_nombre, "grado": grado_final} 
                     try:
                         supabase.table("data_estudiantes").insert(payload_estudiante).execute()
-                        st.success(f"🎯 ¡MATRÍCULA EXITOSA! '{nuevo_nombre}' ha sido dado de alta en el búnker para el curso '{grado_final}'.")
+                        st.success(f"🎯 ¡MATRÍCULA EXITOSA! '{nuevo_nombre}' ha sido dado de alta en el búnker para el grado '{grado_final}'.")
                         st.balloons()
                         st.rerun()
                     except Exception:
@@ -183,7 +176,7 @@ def ejecutar():
         st.markdown("#### 📥 Inyector de Listas Completas de Excel")
         st.info("💡 Copie las dos columnas de su hoja de Excel (Nombres en la primera columna y Grado en la segunda) y péguelas en el cuadro inferior.")
         
-        datos_pegados = st.text_area("📋 PEGUE AQUÍ LAS COLUMNAS DE EXCEL:", placeholder="PÉREZ, JUAN\t10° A\nRODRÍGUEZ, MARÍA\t10° A", height=200)
+        datos_pegados = st.text_area("📋 PEGUE AQUÍ LAS COLUMNAS DE EXCEL:", placeholder="PÉREZ, JUAN\t10°\nRODRÍGUEZ, MARÍA\t11°\nGÓMEZ, CARLOS\t9°", height=200)
         
         boton_carga_masiva = st.button("⚡ INICIAR INYECCIÓN MASIVA DE MATRÍCULAS", use_container_width=True, type="primary")
         
@@ -220,3 +213,9 @@ def ejecutar():
                         st.error("❌ Formato inválido: El sistema no detectó columnas tabuladas correctamente.")
                 except Exception as e:
                     st.error(f"🚨 Falla en el procesador masivo: {e}")
+
+# =================================================================
+# 🚀 INICIO DEL MOTOR
+# =================================================================
+if __name__ == "__main__":
+    ejecutar()
