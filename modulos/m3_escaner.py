@@ -26,63 +26,8 @@ def buscar_campo(diccionario, nombre_campo, predeterminado=""):
     return predeterminado
 
 def ejecutar():
-    # 🎨 INYECCIÓN VISUAL AVANZADA: CONTOURS DE ALTO CONTRASTE ESTILO OMEGA PRO
-    st.markdown("""
-        <style>
-        .titulo-nasa { color: #0d1b2a; font-family: 'Arial Black'; font-size: 34px; margin-bottom: 0px; }
-        .subtitulo-nasa { color: #d4af37; font-weight: bold; font-size: 13px; text-transform: uppercase; margin-top: 0px; }
-        
-        /* 1. Ajuste estricto de etiquetas superiores */
-        div[data-testid="stMainBlockContainer"] label p {
-            color: #0d1b2a !important; font-weight: 800 !important; font-size: 12px !important; text-transform: uppercase;
-        }
-        
-        /* 2. FIX DE BORDES: Definición sólida estilo OMEGA PRO para selectores */
-        div[data-baseweb="select"] {
-            border: 2px solid #0d1b2a !important;
-            border-radius: 6px !important;
-            color: #0d1b2a !important;
-            font-weight: bold !important;
-            background-color: #ffffff !important;
-        }
-        
-        /* 3. Definición sólida para inputs numéricos y cajas de texto */
-        div[data-testid="stNumberInput"] input, div[data-testid="stTextInput"] input {
-            border: 2px solid #0d1b2a !important;
-            border-radius: 6px !important;
-            color: #0d1b2a !important;
-            font-weight: bold !important;
-            height: 42px !important;
-        }
-        
-        /* 4. Contenedor de formulario con Marco Reforzado */
-        div[data-testid="stVerticalBlockBorderWrapper"] {
-            border: 2px solid #0d1b2a !important;
-            border-radius: 8px !important;
-            box-shadow: 0px 4px 15px rgba(0,0,0,0.05) !important;
-        }
-        
-        /* 5. Personalización del área de carga Drag & Drop */
-        div[data-testid="stFileUploader"] {
-            border: 2px dashed #0d1b2a !important;
-            border-radius: 8px !important;
-            background-color: #f8f9fa !important;
-            padding: 10px !important;
-        }
-        
-        /* HUD de Identificación Autónoma */
-        .hud-autonomo {
-            background: linear-gradient(135deg, #111827 0%, #065f46 100%);
-            border-radius: 6px; padding: 15px; color: white; text-align: center;
-            box-shadow: 0px 4px 12px rgba(0,0,0,0.2); border: 2px solid #10b981;
-        }
-        .hud-error-omr {
-            background: linear-gradient(135deg, #111827 0%, #991b1b 100%);
-            border-radius: 6px; padding: 15px; color: white; text-align: center;
-            box-shadow: 0px 4px 12px rgba(0,0,0,0.2); border: 2px solid #f87171;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    # ⚡ Inyección visual unificada Génesis Omega Pro
+    inyectar_estilos_omega()
 
     st.markdown("<p class='titulo-nasa'>📸 Escáner Óptico Inteligente v2.6</p>", unsafe_allow_html=True)
     st.markdown("<p class='subtitulo-nasa'>Identificación Autónoma por Burbuja de Identidad y Mapeo Indexado de Asignaturas</p>", unsafe_allow_html=True)
