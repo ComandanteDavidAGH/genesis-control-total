@@ -68,25 +68,39 @@ def ejecutar():
         
         col_nombre = "nombre_completo" if "nombre_completo" in df_estudiantes.columns else ("nombre" if "nombre" in df_estudiantes.columns else df_estudiantes.columns[1])
         
-        # 🔥 EXTRACCIÓN DE GRADO PLANO (Sin letras/grupos)
-        if "grado" in df_estudiantes.columns:
-            grados_planos = df_estudiantes['grado'].astype(str).str.strip()
-        else:
-            grados_planos = df_estudiantes.iloc[:, 2].astype(str).str.strip()
+        # 🔥 EXTRACCIÓN Y LIMPIEZA NUCLEAR DE GRADOS (Filtro estricto de números)
+        import re
+        def aplanar_grado(g):
+            g_str = str(g).upper().strip()
+            # Buscar cualquier número en la cadena (ej: "2°C" -> "2", "10° A" -> "10")
+            match = re.search(r'(\d+)', g_str)
+            if match:
+                return match.group(1) + "°" # Obligamos a que sea solo el número + °
+            return g_str # Si no hay números (ej: nulos o vacíos), lo dejamos igual
 
-        # 🧹 BARRIDO DE COLUMNAS: Eliminamos las columnas viejas que causan conflicto
-        cols_a_borrar = [col for col in ['grado', 'grupo', 'curso_unificado'] if col in df_estudiantes.columns]
+        # Detectar la columna correcta
+        if "grado" in df_estudiantes.columns:
+            grados_raw = df_estudiantes['grado']
+        elif "curso" in df_estudiantes.columns:
+            grados_raw = df_estudiantes['curso']
+        else:
+            grados_raw = df_estudiantes.iloc[:, 2]
+
+        # Aplicar la limpieza nuclear
+        grados_planos = grados_raw.apply(aplanar_grado)
+
+        # 🧹 BARRIDO DE COLUMNAS: Eliminamos las viejas que causan conflicto
+        cols_a_borrar = [col for col in ['grado', 'grupo', 'curso', 'curso_unificado'] if col in df_estudiantes.columns]
         df_estudiantes = df_estudiantes.drop(columns=cols_a_borrar)
 
-        # Asignamos nombres limpios
+        # Asignamos nombres limpios y los grados purificados
         df_estudiantes = df_estudiantes.rename(columns={col_nombre: 'nombre'})
         df_estudiantes['grado'] = grados_planos
         
-        # Aplicamos mayúsculas
+        # Aplicamos mayúsculas a los nombres
         df_estudiantes['nombre'] = df_estudiantes['nombre'].astype(str).str.upper().str.strip()
-        df_estudiantes['grado'] = df_estudiantes['grado'].astype(str).str.upper().str.strip()
         
-        # 🔥 ESCUDO ANTI-CLONES ACTIVADO: Filtra los 7,772 registros y deja solo a los reales
+        # 🔥 ESCUDO ANTI-CLONES ACTIVADO: Deja solo a los reales
         df_estudiantes = df_estudiantes.drop_duplicates(subset=['nombre', 'grado']).reset_index(drop=True)
         
     else:
