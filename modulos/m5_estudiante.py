@@ -1,7 +1,18 @@
 import streamlit as st
 import pandas as pd
-# 👇 AQUÍ ESTÁ LA LLAVE MAESTRA QUE FALTA
 from estilos_globales import inyectar_estilos_omega
+
+# 👇 NUEVA LLAVE MAESTRA PARA LA BASE DE DATOS
+from supabase import create_client
+
+# ==========================================
+# 🔐 MOTOR DE CONEXIÓN AL BÚNKER DE DATOS
+# ==========================================
+def iniciar_conexion():
+    url = st.secrets["SUPABASE_URL"].strip()
+    key = st.secrets["SUPABASE_KEY"].strip()
+    return create_client(url, key)
+
 def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro
     inyectar_estilos_omega()
@@ -18,6 +29,7 @@ def ejecutar():
         st.error("🚨 Enlace de comunicaciones roto con el búnker de Supabase.")
         return
 
+# ... (DE AQUÍ EN ADELANTE, DEJA EL RESTO DE TU CÓDIGO EXACTAMENTE IGUAL) ...
     # 📥 EXTRACCIÓN DE MATRÍCULAS DESDE EL BÚNKER (Tabla 'data_estudiantes')
     listado_alumnos = []
     with st.spinner("Sincronizando base de datos de matrículas..."):
