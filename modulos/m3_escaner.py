@@ -1,4 +1,5 @@
 import streamlit as st
+from estilos_globales import inyectar_estilos_omega  # <--- ESTA ES LA LÍNEA NUEVA
 import pandas as pd
 import cv2
 import numpy as np
