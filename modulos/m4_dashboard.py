@@ -2,47 +2,38 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import io
+import sys
+import os
 from supabase import create_client
+
+# 🛡️ PUENTE TÁCTICO PARA IMPORTAR ESTILOS DESDE LA RAÍZ
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from estilos_globales import inyectar_estilos_omega
 
 # =================================================================
 # 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
 # =================================================================
 def iniciar_conexion():
-    """Establece conexión segura con la base de datos Supabase."""
     url = st.secrets["SUPABASE_URL"].strip()
     key = st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
-# =================================================================
-# 🛡️ SENSOR DETECTOR INALÁMBRICO DE COLUMNAS ( Fail-Safe )
-# =================================================================
 def buscar_campo(diccionario, nombre_campo, predeterminado=""):
-    """Busca un campo en un diccionario de forma segura y sin mayúsculas."""
-    if diccionario is None:
-        return predeterminado
-    try:
-        if hasattr(diccionario, 'empty') and diccionario.empty:
-            return predeterminado
-    except:
-        pass
+    if diccionario is None: return predeterminado
     try:
         for llave, valor in diccionario.items():
             if str(llave).lower() == nombre_campo.lower():
                 if valor is not None and str(valor).strip().lower() not in ['none', 'null', '']:
                     return valor
-    except:
-        pass
+    except: pass
     return predeterminado
 
 # =================================================================
-# 🚀 EJECUCIÓN CENTRAL DEL MÓDULO DASHBOARD
+# 🚀 EJECUCIÓN CENTRAL
 # =================================================================
 def ejecutar():
-    # ⚡ Inyección visual unificada Génesis Omega Pro (Escudo Estético)
     inyectar_estilos_omega()
 
-    # ✨ Títulos Corregidos con Estilo Omega Pro
     st.markdown("<h1 class='titulo-dash'>📊 Dashboard Analítico e Informes</h1>", unsafe_allow_html=True)
     st.markdown("<h3 class='subtitulo-dash'>Consola Central de Rendimiento y Exportación de Matrices de Calificación</h3>", unsafe_allow_html=True)
     st.markdown("---")
@@ -50,200 +41,100 @@ def ejecutar():
     try:
         supabase = iniciar_conexion()
     except Exception:
-        st.error("⚠️ Falla de enlace con la base de datos central. Verifique credenciales.")
+        st.error("⚠️ Falla de enlace con la base de datos central.")
         return
 
-    # 📥 SINCRONIZACIÓN DE COMPONENTES CRIPTOGRÁFICOS
-    with st.spinner("Sincronizando registros analíticos desde el búnker..."):
+    with st.spinner("Sincronizando registros analíticos..."):
         try:
-            # Descarga de Pruebas Maestras
             res_pruebas = supabase.table("pruebas_maestras").select("*").execute()
             pruebas = res_pruebas.data
-            
-            # Descarga de Calificaciones Consolidadas
             res_notas = supabase.table("respuestas_estudiantes").select("*").execute()
             notas_raw = res_notas.data
         except Exception as e:
-            st.error(f"🚨 Error de lectura en el búnker de datos: {e}")
+            st.error(f"🚨 Error de lectura: {e}")
             return
 
     if not pruebas:
-        st.info("📭 No se registran evaluaciones maestras en el banco de datos para analizar.")
+        st.info("📭 No hay evaluaciones registradas.")
         return
 
-    # =================================================================
-    # 🎛️ SELECTOR GENERAL DE PRUEBAS MÁSTER
-    # =================================================================
     diccionario_pruebas = {}
     for idx, p in enumerate(pruebas):
         nombre_raw = str(buscar_campo(p, 'nombre', 'EXAMEN SIN NOMBRE')).strip().upper()
         materia_raw = str(buscar_campo(p, 'materia', 'MATERIA')).strip().upper()
         grado_raw = str(buscar_campo(p, 'grado', 'GENERAL')).strip().upper()
-        
         etiqueta_selector = f"{nombre_raw} - {materia_raw} ({grado_raw})"
-        # Fail-safe para IDs duplicados o nulos
         if etiqueta_selector in diccionario_pruebas:
             id_seguro = p.get('id_prueba', p.get('id', idx))
             etiqueta_selector = f"{etiqueta_selector} (ID: {id_seguro})"
-            
         diccionario_pruebas[etiqueta_selector] = p
 
-    # Widget Selector de Alta Visibilidad
     prueba_sel = st.selectbox("🎯 SELECCIONE LA EVALUACIÓN MÁSTER PARA AUDITAR:", list(diccionario_pruebas.keys()))
 
-    # =================================================================
-    # 🗃️ PROCESAMIENTO BIÓNICO DE DATOS
-    # =================================================================
     datos_prueba_activa = diccionario_pruebas[prueba_sel]
     id_prueba_activa = datos_prueba_activa.get("id_prueba") or datos_prueba_activa.get("id")
-    
-    # Conversión segura a DataFrame
     df_notas = pd.DataFrame(notas_raw) if notas_raw else pd.DataFrame()
     
     if not df_notas.empty:
-        # Normalización de columnas a minúsculas
         df_notas.columns = [c.lower() for c in df_notas.columns]
-        # Filtrado instantáneo por ID de Prueba
         df_notas = df_notas[df_notas['id_prueba'] == id_prueba_activa]
 
-    # Contenedores de resultados consolidados
     df_informe_limpio = pd.DataFrame()
     conteo_niveles = {"Bajo (<60%)": 0, "Básico (60-79%)": 0, "Alto (80-89%)": 0, "Superior (≥90%)": 0}
 
-    # Iteración y Limpieza del Puente de Notas
     if not df_notas.empty:
         filas_limpias = []
         for _, fila in df_notas.iterrows():
             estudiante_str = str(buscar_campo(fila, 'estudiante', 'ALUMNO ANÓNIMO'))
-            
-            # Parsing avanzado de Nombre y Curso (si viene en formato "Nombre (Curso)")
-            nombre_final = estudiante_str
-            curso_final = "SIN CURSO"
+            nombre_final, curso_final = estudiante_str, "SIN CURSO"
             if "(" in estudiante_str and ")" in estudiante_str:
                 parts = estudiante_str.split("(")
-                nombre_final = parts[0].strip()
-                curso_final = parts[1].replace(")", "").strip()
+                nombre_final, curso_final = parts[0].strip(), parts[1].replace(")", "").strip()
 
-            # Extracción y conversión segura de métricas
             try:
                 pct = float(buscar_campo(fila, 'porcentaje', 0.0))
                 nota = float(buscar_campo(fila, 'puntaje_obtenido', 0.0))
                 max_p = float(buscar_campo(fila, 'puntaje_maximo', 5.0))
-            except (ValueError, TypeError):
-                pct, nota, max_p = 0.0, 0.0, 5.0
+            except: pct, nota, max_p = 0.0, 0.0, 5.0
             
-            # Algoritmo de clasificación de Rangos Cognitivos Institucionales
-            if pct < 60.0:
-                nivel, estado = "Bajo (<60%)", "REPROBADO ❌"
-            elif 60.0 <= pct < 80.0:
-                nivel, estado = "Básico (60-79%)", "APROBADO ✅"
-            elif 80.0 <= pct < 90.0:
-                nivel, estado = "Alto (80-89%)", "APROBADO ✅"
-            else:
-                nivel, estado = "Superior (≥90%)", "APROBADO ✅"
+            if pct < 60.0: nivel, estado = "Bajo (<60%)", "REPROBADO ❌"
+            elif 60.0 <= pct < 80.0: nivel, estado = "Básico (60-79%)", "APROBADO ✅"
+            elif 80.0 <= pct < 90.0: nivel, estado = "Alto (80-89%)", "APROBADO ✅"
+            else: nivel, estado = "Superior (≥90%)", "APROBADO ✅"
             
-            # Actualización de contadores gráficos
             conteo_niveles[nivel] += 1
-            
-            # Construcción de la matriz limpia
             filas_limpias.append({
-                "ESTUDIANTE MATRÍCULA": nombre_final.upper(),
-                "CURSO / GRADO": curso_final.upper(),
-                "NOTA LOGRADA": round(nota, 2),
-                "NOTA MÁXIMA": round(max_p, 2),
-                "EFECTIVIDAD %": f"{pct:.1f}%",
-                "RANGO COGNITIVO": nivel,
-                "ESTADO ACADÉMICO": estado
+                "ESTUDIANTE": nombre_final.upper(), "CURSO": curso_final.upper(),
+                "NOTA": round(nota, 2), "MÁXIMA": round(max_p, 2),
+                "EFECTIVIDAD": f"{pct:.1f}%", "RANGO": nivel, "ESTADO": estado
             })
-        
-        # Consolidación y ordenación alfabética
         if filas_limpias:
-            df_informe_limpio = pd.DataFrame(filas_limpias).sort_values(by="ESTUDIANTE MATRÍCULA")
+            df_informe_limpio = pd.DataFrame(filas_limpias).sort_values(by="ESTUDIANTE")
 
-    # =================================================================
-    # 📐 DISTRIBUCIÓN GRÁFICA Y PANELES DE DETALLE
-    # =================================================================
     c1, c2 = st.columns([1, 1.2])
-    
     with c1:
         st.markdown("### 📝 Detalles de Operación")
-        
-        try:
-            max_p_display = float(buscar_campo(datos_prueba_activa, 'puntaje_maximo', 5.0))
-            items_display = int(buscar_campo(datos_prueba_activa, 'total_preguntas', 10))
-        except:
-            max_p_display, items_display = 5.0, 10
-
-        # Tabla de Especificaciones Técnicas (Bordes OMEGA PRO aplicados)
         tabla_detalles = pd.DataFrame({
-            "Especificación": ["Examen Activo", "Asignatura", "Preguntas Totales", "Puntaje Máximo", "Último Escaneo"],
-            "Detalle": [
-                str(buscar_campo(datos_prueba_activa, 'nombre', 'EXAMEN')).upper(),
-                str(buscar_campo(datos_prueba_activa, 'materia', 'MATERIA')).upper(),
-                f"{items_display} Ítems",
-                f"{max_p_display:.1f} Pts",
-                "2026-06-16"
-            ]
+            "Especificación": ["Examen", "Asignatura", "Preguntas", "Máximo"],
+            "Detalle": [str(buscar_campo(datos_prueba_activa, 'nombre')).upper(), 
+                        str(buscar_campo(datos_prueba_activa, 'materia')).upper(),
+                        f"{buscar_campo(datos_prueba_activa, 'total_preguntas', 10)} Ítems",
+                        f"{float(buscar_campo(datos_prueba_activa, 'puntaje_maximo', 5.0)):.1f} Pts"]
         })
         st.dataframe(tabla_detalles, use_container_width=True, hide_index=True)
-        
-        # Sección de Exportación Masiva
-        st.markdown("### 📥 Descargar Reportes Masivos:")
+        st.markdown("### 📥 Descargar Reportes:")
         if not df_informe_limpio.empty:
-            # Generación de binario Excel en memoria
-            buffer_excel = io.BytesIO()
-            with pd.ExcelWriter(buffer_excel, engine='xlsxwriter') as writer:
-                df_informe_limpio.to_excel(writer, sheet_name='Calificaciones', index=False)
-                workbook = writer.book
-                worksheet = writer.sheets['Calificaciones']
-                worksheet.set_column('A:G', 22) # Ajuste de ancho de columna
-            
-            buffer_csv = df_informe_limpio.to_csv(index=False).encode('utf-8')
-            
-            # Widgets de Descarga Táctica
-            cx1, cx2, cx3 = st.columns(3)
-            with cx1: st.download_button("🟢 Descargar Excel", buffer_excel.getvalue(), f"REPORTE_{buscar_campo(datos_prueba_activa, 'nombre')}.xlsx", "application/vnd.ms-excel", use_container_width=True)
-            with cx2: st.download_button("📄 Descargar CSV", buffer_csv, f"REPORTE_{buscar_campo(datos_prueba_activa, 'nombre')}.csv", "text/csv", use_container_width=True)
-            with cx3: st.button("🚀 Migrar Notas", type="secondary", disabled=True, use_container_width=True)
-        else:
-            st.warning("⚠️ Sin datos consolidados para exportar en esta prueba.")
-
-    with c2:
-        st.markdown("### 📊 Distribución de Puntuaciones")
-        # Generación del DataFrame para el gráfico
-        df_grafico = pd.DataFrame({
-            "Nivel": list(conteo_niveles.keys()),
-            "Hojas": list(conteo_niveles.values())
-        })
-        
-        # Motor Gráfico Plotly Express (Paleta de colores Omega Pro)
-        fig = px.bar(
-            df_grafico, x="Nivel", y="Hojas",
-            color="Nivel",
-            color_discrete_map={
-                "Bajo (<60%)": "#ff4b4b",       # Rojo Alerta
-                "Básico (60-79%)": "#ffaa00",   # Naranja Precaución
-                "Alto (80-89%)": "#38b000",     # Verde Éxito
-                "Superior (≥90%)": "#007200"    # Verde Master
-            },
-            text_auto=True,
-            height=320
-        )
-        # Ajustes de Layout y Limpieza visual
-        fig.update_layout(showlegend=False, margin=dict(l=10, r=10, t=10, b=10), xaxis_title=None)
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-
-    # =================================================================
-    # 📋 SECCIÓN INFERIOR: SABANA GENERAL DE NOTAS (Data Editor con Bordes)
-    # =================================================================
-    st.markdown("---")
-    st.markdown("### 📋 Control de Asistencia y Sabana Escaneada")
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                df_informe_limpio.to_excel(writer, index=False)
+            st.download_button("🟢 Descargar Excel", buffer.getvalue(), "REPORTE.xlsx", "application/vnd.ms-excel", use_container_width=True)
     
-    if not df_informe_limpio.empty:
-        # Data Editor blindado (lectura-única y borde rígido)
-        st.data_editor(df_informe_limpio, use_container_width=True, hide_index=True, disabled=True)
-    else:
-        st.info("💡 Consola Vacía: No se registran exámenes presentados para esta evaluación aún.")
+    with c2:
+        st.markdown("### 📊 Distribución")
+        fig = px.bar(x=list(conteo_niveles.keys()), y=list(conteo_niveles.values()), color=list(conteo_niveles.keys()), text_auto=True, height=300)
+        st.plotly_chart(fig, use_container_width=True)
 
-if __name__ == "__main__":
-    pass
+    st.markdown("---")
+    st.markdown("### 📋 Sabana General de Notas")
+    if not df_informe_limpio.empty:
+        st.data_editor(df_informe_limpio, use_container_width=True, hide_index=True, disabled=True)
