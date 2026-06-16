@@ -40,9 +40,9 @@ def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro
     inyectar_estilos_omega()
 
-    st.markdown("<p class='titulo-dash'>📊 Dashboard Analítico e Informes</p>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitulo-dash'>Consola Central de Rendimiento y Exportación de Matrices de Calificación</p>", unsafe_allow_html=True)
-    st.markdown("---")
+    # Reemplaza los st.markdown de tus títulos actuales por esto:
+st.markdown("<h1 class='titulo-dash'>📊 Dashboard Analítico e Informes</h1>", unsafe_allow_html=True)
+st.markdown("<h3 class='subtitulo-dash'>Consola Central de Rendimiento y Exportación de Matrices de Calificación</h3>", unsafe_allow_html=True)
 
     try:
         supabase = iniciar_conexion()
