@@ -63,17 +63,23 @@ def ejecutar():
         
         col_nombre = "nombre_completo" if "nombre_completo" in df_estudiantes.columns else ("nombre" if "nombre" in df_estudiantes.columns else df_estudiantes.columns[1])
         
-        # 🔥 SOLUCIÓN GRADOS: Fusiones de Grado y Grupo
+        # 🔥 FUSIÓN DE GRADOS BLINDADA
         if "grado" in df_estudiantes.columns and "grupo" in df_estudiantes.columns:
-            # Une el "10°" con el "A" -> "10° A"
-            df_estudiantes['curso_unificado'] = df_estudiantes['grado'].astype(str).str.strip() + " " + df_estudiantes['grupo'].astype(str).str.strip()
+            grados_unidos = df_estudiantes['grado'].astype(str).str.strip() + " " + df_estudiantes['grupo'].astype(str).str.strip()
         elif "grado" in df_estudiantes.columns:
-            df_estudiantes['curso_unificado'] = df_estudiantes['grado'].astype(str).str.strip()
+            grados_unidos = df_estudiantes['grado'].astype(str).str.strip()
         else:
-            df_estudiantes['curso_unificado'] = df_estudiantes.iloc[:, 2].astype(str).str.strip()
+            grados_unidos = df_estudiantes.iloc[:, 2].astype(str).str.strip()
 
-        df_estudiantes = df_estudiantes.rename(columns={col_nombre: 'nombre', 'curso_unificado': 'grado'})
+        # 🧹 BARRIDO DE COLUMNAS: Eliminamos las columnas viejas que causan conflicto
+        cols_a_borrar = [col for col in ['grado', 'grupo', 'curso_unificado'] if col in df_estudiantes.columns]
+        df_estudiantes = df_estudiantes.drop(columns=cols_a_borrar)
+
+        # Asignamos nombres limpios
+        df_estudiantes = df_estudiantes.rename(columns={col_nombre: 'nombre'})
+        df_estudiantes['grado'] = grados_unidos
         
+        # Aplicamos mayúsculas sin temor a que explote Pandas
         df_estudiantes['nombre'] = df_estudiantes['nombre'].astype(str).str.upper().str.strip()
         df_estudiantes['grado'] = df_estudiantes['grado'].astype(str).str.upper().str.strip()
     else:
