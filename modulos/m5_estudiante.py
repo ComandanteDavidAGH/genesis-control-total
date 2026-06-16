@@ -1,3 +1,7 @@
+import streamlit as st
+import pandas as pd
+# 👇 AQUÍ ESTÁ LA LLAVE MAESTRA QUE FALTA
+from estilos_globales import inyectar_estilos_omega
 def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro
     inyectar_estilos_omega()
