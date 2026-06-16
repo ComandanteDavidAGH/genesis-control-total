@@ -82,6 +82,10 @@ def ejecutar():
         # Aplicamos mayúsculas sin temor a que explote Pandas
         df_estudiantes['nombre'] = df_estudiantes['nombre'].astype(str).str.upper().str.strip()
         df_estudiantes['grado'] = df_estudiantes['grado'].astype(str).str.upper().str.strip()
+        
+        # 🔥 ESCUDO ANTI-CLONES: Dejar solo un registro único por estudiante y grado
+        df_estudiantes = df_estudiantes.drop_duplicates(subset=['nombre', 'grado']).reset_index(drop=True)
+        
     else:
         df_estudiantes = pd.DataFrame(columns=["nombre", "grado"])
 
