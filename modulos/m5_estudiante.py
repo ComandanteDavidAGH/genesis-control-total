@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import re
 from supabase import create_client
-# Asumo que tienes tu inyector de estilos basado en tu primera captura
 from estilos_globales import inyectar_estilos_omega 
 
 # =====================================================================
@@ -36,8 +35,8 @@ def ejecutar():
         # Extracción de datos con indicador de carga
         with st.spinner("Sincronizando con el búnker de datos..."):
             try:
-                # Límite alto para traer todas las materias y no dejar grados por fuera
-                respuesta = supabase.table("datos_estudiantes").select("nombre_completo, grado").limit(15000).execute()
+                # 🔥 CORRECCIÓN AQUÍ: Se cambió a "data_estudiantes"
+                respuesta = supabase.table("data_estudiantes").select("nombre_completo, grado").limit(15000).execute()
                 listado_crudo = respuesta.data
             except Exception as e:
                 st.error(f"🚨 Enlace de comunicaciones roto con el búnker de Supabase: {e}")
@@ -48,7 +47,6 @@ def ejecutar():
             df_est = pd.DataFrame(listado_crudo)
             
             # --- LIMPIEZA NUCLEAR ---
-            # Función para estandarizar los grados (ej. "2°C" -> "2°", "10° A" -> "10°")
             def aplanar_grado(g):
                 if pd.isna(g): return "SIN GRADO"
                 match = re.search(r'(\d+)', str(g))
@@ -58,7 +56,6 @@ def ejecutar():
             df_est['nombre_completo'] = df_est['nombre_completo'].astype(str).str.upper().str.strip()
             
             # --- ELIMINACIÓN DE DUPLICADOS (LA MAGIA) ---
-            # Aquí reducimos los 7,772 registros a tus 750 alumnos reales
             df_unicos = df_est.drop_duplicates(subset=['nombre_completo', 'grado']).reset_index(drop=True)
             
             # Ordenamos los grados disponibles de forma lógica
@@ -78,7 +75,6 @@ def ejecutar():
                     # Mostramos el consolidado final
                     st.markdown(f"📊 **Listado Oficial de {grado_seleccionado} — ({len(df_filtrado)} Alumnos):**")
                     
-                    # Renderizamos la tabla mostrando solo el nombre completo
                     st.dataframe(
                         df_filtrado[['nombre_completo']].rename(columns={'nombre_completo': 'Nombre Completo'}),
                         use_container_width=True
@@ -88,15 +84,11 @@ def ejecutar():
         else:
             st.info("La base de datos está vacía o no se pudo extraer la información.")
 
-    # Espacios reservados para las otras pestañas
     with tab_individual:
         st.write("Interfaz para matrícula individual en construcción...")
         
     with tab_masiva:
         st.write("Interfaz para carga masiva táctica en construcción...")
 
-# =====================================================================
-# Bloque de ejecución si se corre el archivo directamente (opcional)
-# =====================================================================
 if __name__ == "__main__":
     ejecutar()
