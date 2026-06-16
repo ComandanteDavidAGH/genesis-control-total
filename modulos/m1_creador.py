@@ -12,41 +12,8 @@ def iniciar_conexion():
     return create_client(url, key)
 
 def ejecutar():
-    # 🎨 INYECCIÓN VISUAL DE ALTA INGENIERÍA (GÉNESIS GOLDEN STYLING) - Tu diseño exacto
-    st.markdown("""
-        <style>
-        .subtitulo-dorado {
-            color: #d4af37;
-            font-weight: bold;
-            font-size: 14px;
-            text-transform: uppercase;
-            text-align: center;
-            letter-spacing: 1px;
-            margin-bottom: 25px;
-        }
-        .seccion-titulo {
-            color: #0d1b2a;
-            font-family: 'Arial Black', sans-serif;
-            font-size: 24px;
-            font-weight: bold;
-            margin-top: 15px;
-            margin-bottom: 15px;
-        }
-        
-        /* Ajuste estricto de etiquetas de alto contraste */
-        div[data-testid="stMainBlockContainer"] label p {
-            color: #0d1b2a !important;
-            font-weight: 800 !important;
-            font-size: 12px !important;
-            text-transform: uppercase;
-        }
-        div[data-baseweb="select"] {
-            color: #0d1b2a !important;
-            font-weight: bold !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
+    # ⚡ Inyección visual unificada Génesis Omega Pro
+    inyectar_estilos_omega()
     st.markdown("<p class='subtitulo-dorado'>DISEÑO, ALMACENAMIENTO DE CLAVES DE RESPUESTAS Y GENERACIÓN AUTÓNOMA DE HOJAS OMR</p>", unsafe_allow_html=True)
 
     try:
