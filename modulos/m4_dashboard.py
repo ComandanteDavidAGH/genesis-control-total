@@ -28,8 +28,8 @@ def ejecutar():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<p class='titulo-genesis'>📊 Dashboard Analítico e Informes</p>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitulo-genesis'>Consola Central de Rendimiento y Exportación de Matrices de Calificación</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #0F172A; font-size: 3rem;'>📊 Panel Analítico e Informes</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #D97706; font-weight: bold; letter-spacing: 1px;'>CONSOLA CENTRAL DE RENDIMIENTO Y EXPORTACIÓN DE MATRICES DE CALIFICACIÓN</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     try:
