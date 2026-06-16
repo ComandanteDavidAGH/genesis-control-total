@@ -14,7 +14,12 @@ def iniciar_conexion():
 def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro
     inyectar_estilos_omega()
-    st.markdown("<p class='titulo-nasa'>📝 Formato de Carga Directa</p>", unsafe_allow_html=True)
+
+    # ==========================================
+    # 📊 ENCABEZADO PRINCIPAL DE ALTO IMPACTO
+    # ==========================================
+    st.markdown("<h1 style='text-align: center; color: #0F172A; font-size: 3rem;'>⌨️ Ingreso Manual de Calificaciones</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #D97706; font-weight: bold; letter-spacing: 1px;'>MÓDULO DE DIGITACIÓN DIRECTA Y SINCRONIZACIÓN EN TIEMPO REAL</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     try:
@@ -65,20 +70,21 @@ def ejecutar():
         lista_grados_disponibles = ["3°", "SEXTO A", "SÉPTIMO A"]
 
     # =================================================================
-    # 🏛️ DESPLIEGUE DEL NUEVO FORMULARIO COMANDADO POR CURSO
+    # 🏛️ DESPLIEGUE DEL NUEVO FORMULARIO ESTRUCTURADO
     # =================================================================
+    st.markdown("### ⚙️ PASO 1: Parámetros del Examen")
     with st.container(border=True):
         c1, c2 = st.columns(2)
-        
         with c1:
-            # 1. El docente selecciona la materia
             materia_seleccionada = st.selectbox("🎯 ASIGNATURA / MATERIA CORRESPONDIENTE:", lista_materias)
-            
-            # 2. El docente elige el Grado que va a dictar (¡Mando restaurado!)
+        with c2:
             grado_seleccionado = st.selectbox("👥 CURSO / GRADO A CALIFICAR:", lista_grados_disponibles)
 
-        with c2:
-            # 3. FILTRADO INTELIGENTE: Extraemos solo los alumnos que pertenecen al grado seleccionado
+    st.markdown("### 👤 PASO 2: Selección y Resultados")
+    with st.container(border=True):
+        c3, c4 = st.columns(2)
+        with c3:
+            # FILTRADO INTELIGENTE: Extraemos solo los alumnos que pertenecen al grado seleccionado
             if not df_est.empty:
                 df_alumnos_filtrados = df_est[df_est["grado"] == grado_seleccionado]
                 lista_alumnos_final = sorted(df_alumnos_filtrados["nombre_completo"].unique().tolist())
@@ -88,22 +94,21 @@ def ejecutar():
             else:
                 lista_alumnos_final = ["NO HAY ALUMNOS EN MATRÍCULA"]
 
-            # El selector ahora es una delicia: solo muestra los niños de ese salón específico
             alumno_sel = st.selectbox("👤 NOMBRE DEL ESTUDIANTE:", lista_alumnos_final)
             
-            # Selector estático de control de ítems
-            max_questions = st.number_input("📋 CANTIDAD DE PREGUNTAS DEL EXAMEN:", min_value=1, max_value=100, value=10, step=1)
+        with c4:
+            max_questions = st.number_input("📋 CANTIDAD TOTAL DE PREGUNTAS:", min_value=1, max_value=100, value=10, step=1)
 
     # =================================================================
     # 🧮 PANEL DE CONTEO DE ACIERTOS Y CÓMPUTO AUTOMÁTICO
     # =================================================================
-    st.markdown("### 🎮 Entrada de Aciertos Reales")
+    st.markdown("---")
     
-    cc1, cc2 = st.columns([1.5, 1])
+    cc1, cc2 = st.columns([1, 1.5])
     
     with cc1:
         aciertos = st.number_input(
-            f"✍ *RESPUESTAS CORRECTAS LOGRADAS (MÁXIMO: {max_questions}):*",
+            f"✍ ACIERTOS OBTENIDOS (MÁX: {max_questions}):",
             min_value=0,
             max_value=int(max_questions),
             value=0,
@@ -115,21 +120,21 @@ def ejecutar():
 
     with cc2:
         st.markdown(f"""
-            <div class="hud-digitar">
-                <div style="display: flex; justify-content: space-around;">
+            <div style="background-color: #0d1b2a; padding: 15px; border-radius: 6px; text-align: center; border-left: 4px solid #d4af37; border: 2px solid #0d1b2a; margin-top: 25px;">
+                <div style="display: flex; justify-content: space-around; align-items: center;">
                     <div>
                         <p style="margin:0; font-size:11px; color:#d4af37; font-weight:bold;">RENDIMIENTO</p>
-                        <p style="margin:5px 0 0 0; font-size:24px; font-family:'Arial Black';">{porcentaje_rendimiento:.1f}%</p>
+                        <p style="margin:5px 0 0 0; font-size:26px; color:white; font-family:'Arial Black';">{porcentaje_rendimiento:.1f}%</p>
                     </div>
-                    <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left:15px;">
+                    <div style="border-left: 1px solid rgba(255,255,255,0.2); padding-left:20px;">
                         <p style="margin:0; font-size:11px; color:#d4af37; font-weight:bold;">NOTA PROYECTADA</p>
-                        <p style="margin:5px 0 0 0; font-size:24px; font-family:'Arial Black'; color:#00ff66;">{nota_proyectada:.2f} / 5.0</p>
+                        <p style="margin:5px 0 0 0; font-size:26px; color:#00ff66; font-family:'Arial Black';">{nota_proyectada:.2f} / 5.0</p>
                     </div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("---")
+    st.markdown("<br>", unsafe_allow_html=True)
     boton_inyectar = st.button("🚀 INYECTAR CALIFICACIÓN AL BÚNKER DE DATOS", use_container_width=True, type="primary")
 
     if boton_inyectar:
