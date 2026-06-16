@@ -101,10 +101,14 @@ def ejecutar():
         columnas_ordenadas = ["ID Estudiante", "Nombre Completo", "Grado", "Grupo", "Correo Institucional"]
         columnas_finales = [col for col in columnas_ordenadas if col in df_ordenado.columns] + [col for col in df_ordenado.columns if col not in columnas_ordenadas]
 
-        # 🎯 FILTRO ESTRATÉGICO POR GRADO
+        # 🎯 FILTRO ESTRATÉGICO POR GRADO (AHORA MÁS COMPACTO)
         if "Grado" in df_ordenado.columns:
             lista_grados_disponibles = ["TODOS LOS GRADOS"] + sorted(df_ordenado["Grado"].dropna().unique().tolist())
-            grado_seleccionado = st.selectbox("🔎 FILTRAR POR CURSO/GRADO:", lista_grados_disponibles)
+            
+            # Usamos columnas para limitar el ancho del selector (1/3 para el selector, 2/3 vacíos)
+            col_filtro, col_vacia = st.columns([1, 2])
+            with col_filtro:
+                grado_seleccionado = st.selectbox("🔎 FILTRAR POR CURSO/GRADO:", lista_grados_disponibles)
             
             # Aplicar el filtro si no se seleccionó "TODOS"
             if grado_seleccionado != "TODOS LOS GRADOS":
