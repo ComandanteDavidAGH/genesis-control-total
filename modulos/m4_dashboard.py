@@ -15,7 +15,7 @@ def iniciar_conexion():
 # 🚀 EJECUCIÓN CENTRAL DEL MÓDULO DASHBOARD (MÓDULO 5 DEFINITIVO)
 # =================================================================
 def ejecutar():
-    # 🎨 INYECCIÓN DE ALTA INGENIERÍA VISUAL (GÉNESIS ANALYTICS HUD) - TU DISEÑO ORIGINAL
+    # 🎨 INYECCIÓN DE ALTA INGENIERÍA VISUAL (GÉNESIS ANALYTICS HUD)
     st.markdown("""
         <style>
         .titulo-genesis { color: #0d1b2a; font-family: 'Arial Black', sans-serif; font-size: 32px; margin-bottom: 0px; }
@@ -47,7 +47,8 @@ def ejecutar():
             estudiantes_data = []
             offset, chunk_size = 0, 1000
             while True:
-                res_est = supabase.table("datos_estudiantes").select("ID_Estudiante, Nombre_Completo, Grado").range(offset, offset + chunk_size - 1).execute()
+                # 🔥 AQUÍ ESTÁ LA CORRECCIÓN: data_estudiantes
+                res_est = supabase.table("data_estudiantes").select("ID_Estudiante, Nombre_Completo, Grado").range(offset, offset + chunk_size - 1).execute()
                 if not res_est.data: break
                 estudiantes_data.extend(res_est.data)
                 if len(res_est.data) < chunk_size: break
