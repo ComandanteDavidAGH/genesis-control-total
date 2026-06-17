@@ -1,5 +1,5 @@
 import streamlit as st
-from estilos_globales import inyectar_estilos_omega  # <--- ESTA ES LA LÍNEA NUEVA
+from estilos_globales import inyectar_estilos_omega
 import pandas as pd
 import cv2
 import numpy as np
@@ -25,15 +25,78 @@ def buscar_campo(diccionario, nombre_campo, predeterminado=""):
                 return valor
     return predeterminado
 
+# =================================================================
+# 👁️ MOTOR CORE DE VISIÓN ARTIFICIAL (NUEVO)
+# =================================================================
+def escanear_burbujas_opencv(imagen_bytes, llave_correcta):
+    """
+    Procesa la imagen, detecta burbujas marcadas y las compara con la llave maestra.
+    Requiere una imagen recortada de las opciones (A, B, C, D).
+    """
+    img = cv2.imdecode(imagen_bytes, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError("Error al decodificar la imagen.")
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+
+    # Buscar contornos (Burbujas)
+    cnts, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    burbujas = []
+
+    for c in cnts:
+        (x, y, w, h) = cv2.boundingRect(c)
+        ar = w / float(h)
+        # Filtro geométrico: Debe ser casi un cuadrado (círculo) y tener un tamaño mínimo
+        if w >= 15 and h >= 15 and 0.8 <= ar <= 1.2:
+            burbujas.append(c)
+
+    # Si no detecta suficientes burbujas, falla la lectura autónoma
+    if len(burbujas) < len(llave_correcta) * 4: # Asumiendo 4 opciones (A,B,C,D) por pregunta
+        return img, -1, None
+
+    # Ordenar burbujas de arriba a abajo (por preguntas)
+    burbujas = sorted(burbujas, key=lambda b: cv2.boundingRect(b)[1])
+    
+    aciertos = 0
+    opciones_letras = ['A', 'B', 'C', 'D']
+    
+    # Agrupar en filas de 4 (A, B, C, D) y evaluar
+    for (q, i) in enumerate(np.arange(0, len(llave_correcta) * 4, 4)):
+        fila_burbujas = sorted(burbujas[i:i + 4], key=lambda b: cv2.boundingRect(b)[0]) # Ordenar de izq a der
+        
+        burbuja_marcada = None
+        max_pixeles = 0
+        
+        # Revisar cuál burbuja está más rellena
+        for (j, b) in enumerate(fila_burbujas):
+            mask = np.zeros(thresh.shape, dtype="uint8")
+            cv2.drawContours(mask, [b], -1, 255, -1)
+            mask = cv2.bitwise_and(thresh, thresh, mask=mask)
+            total_pixeles = cv2.countNonZero(mask)
+            
+            if total_pixeles > max_pixeles:
+                max_pixeles = total_pixeles
+                burbuja_marcada = j
+        
+        # Comparar con la llave maestra
+        respuesta_detectada = opciones_letras[burbuja_marcada]
+        if respuesta_detectada == llave_correcta[q].strip().upper():
+            aciertos += 1
+            # Dibujar contorno verde (Correcto)
+            cv2.drawContours(img, [fila_burbujas[burbuja_marcada]], -1, (0, 255, 0), 3)
+        else:
+            # Dibujar contorno rojo (Incorrecto)
+            cv2.drawContours(img, [fila_burbujas[burbuja_marcada]], -1, (0, 0, 255), 3)
+
+    return img, aciertos, burbujas
+
 def ejecutar():
-    # ⚡ Inyección visual unificada Génesis Omega Pro
     inyectar_estilos_omega()
 
-    # ==========================================
-    # 📊 ENCABEZADO PRINCIPAL DE ALTO IMPACTO
-    # ==========================================
-    st.markdown("<h1 style='text-align: center; color: #0F172A; font-size: 3rem;'>📸 Motor de Escaneo OMR v2.6</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #D97706; font-weight: bold; letter-spacing: 1px;'>IDENTIFICACIÓN AUTÓNOMA Y MAPEO INDEXADO DE ASIGNATURAS</p>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #0F172A; font-size: 3rem;'>📸 Motor de Escaneo OMR v3.0</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #D97706; font-weight: bold; letter-spacing: 1px;'>IDENTIFICACIÓN AUTÓNOMA Y CALIFICACIÓN TÁCTICA</p>", unsafe_allow_html=True)
     st.markdown("---")
 
     try:
@@ -42,8 +105,7 @@ def ejecutar():
         st.error("🚨 Falla en el enlace satelital con Supabase.")
         return
 
-    # 📥 DESCARGA COMPLETA DE PARÁMETROS EN RAM
-    with st.spinner("Sincronizando el catálogo oficial de materias y grados de la institución..."):
+    with st.spinner("Sincronizando el catálogo oficial del búnker..."):
         try:
             res_consolidado = supabase.table("notas_consolidadas").select("ASIGNATURA").execute()
             materias_raw = res_consolidado.data if res_consolidado.data else []
@@ -60,17 +122,15 @@ def ejecutar():
                 if len(resultado.data) < chunk_size: break
                 offset += chunk_size
         except Exception as e:
-            st.error(f"🚨 Error de lectura en el búnker de datos: {e}")
+            st.error(f"🚨 Error de lectura: {e}")
             return
 
-    # 🧮 NORMALIZACIÓN Y FILTRADO DE ASIGNATURAS HISTÓRICAS REALES
     if materias_raw:
         df_mat = pd.DataFrame(materias_raw)
         lista_materias = sorted(df_mat["ASIGNATURA"].dropna().astype(str).str.upper().str.strip().unique().tolist())
     else:
-        lista_materias = ["MATEMÁTICAS", "CIENCIAS NATURALES", "LENGUAJE", "INGLÉS", "SOCIALES"]
+        lista_materias = ["MATEMÁTICAS", "CIENCIAS NATURALES"]
 
-    # 🧮 CONVERSIÓN DE MATRÍCULA A DATAFRAME SEGURO
     if estudiantes_base:
         df_est = pd.DataFrame(estudiantes_base)
         df_est.columns = [col.lower() for col in df_est.columns]
@@ -79,24 +139,23 @@ def ejecutar():
         lista_grados_disponibles = sorted(df_est["grado"].unique().tolist())
     else:
         df_est = pd.DataFrame()
-        lista_grados_disponibles = ["3°", "SEXTO A", "SÉPTIMO A"]
+        lista_grados_disponibles = ["10°", "11°"]
 
-    # =================================================================
-    # 🏛️ PASO 1: PANEL DE CONTROL COMPLETO (Sincronía Simétrica Absoluta)
-    # =================================================================
-    st.markdown("### ⚙️ PASO 1: Parámetros de Calibración")
+    st.markdown("### ⚙️ PASO 1: Parámetros de Calibración (Coincidencia Exacta)")
     
     with st.container(border=True):
         c1, c2 = st.columns(2)
         with c1:
-            materia_seleccionada = st.selectbox("🎯 ASIGNATURA / MATERIA CORRESPONDIENTE:", lista_materias)
-            grado_seleccionado = st.selectbox("👥 CURSO / GRADO A ESCANEAR:", lista_grados_disponibles)
+            materia_seleccionada = st.selectbox("🎯 ASIGNATURA:", lista_materias)
+            grado_seleccionado = st.selectbox("👥 CURSO / GRADO:", lista_grados_disponibles)
 
         with c2:
             id_prueba_master = 1  
             max_preguntas = 10
             puntaje_maximo = 5.0
+            llave_maestra_lista = []
             
+            # COINCIDENCIA EXACTA DE MATERIA Y GRADO
             match_prueba = [p for p in pruebas if str(buscar_campo(p, 'materia')).strip().upper() == materia_seleccionada and str(buscar_campo(p, 'grado')).strip().upper() == grado_seleccionado]
             
             if match_prueba:
@@ -104,10 +163,17 @@ def ejecutar():
                 id_prueba_master = datos_prueba.get("id_prueba") or datos_prueba.get("id", 1)
                 max_preguntas = int(buscar_campo(datos_prueba, 'total_preguntas', 10))
                 puntaje_maximo = float(buscar_campo(datos_prueba, 'puntaje_maximo', 5.0))
-                st.success(f"🔑 Matriz de respuestas detectada en el búnker para este curso ({max_preguntas} Preguntas).")
+                
+                # Extracción de la llave maestra sin comillas y separada por comas
+                llave_raw = str(buscar_campo(datos_prueba, 'llave_maestra', ''))
+                if llave_raw:
+                    llave_maestra_lista = llave_raw.split(',')
+                    st.success(f"🔑 Matriz detectada: {max_preguntas} Preguntas | Base {puntaje_maximo}.")
+                else:
+                    st.warning("⚠️ Prueba detectada, pero no tiene Llave Maestra configurada.")
             else:
-                max_preguntas = st.number_input("📋 CANTIDAD DE PREGUNTAS DEL EXAMEN:", min_value=1, max_value=100, value=10, step=1)
-                st.info("ℹ️ Sistema OMR: No se detectó plantilla previa. Se aplicará calibración estándar sobre base 5.0.")
+                max_preguntas = st.number_input("📋 CANTIDAD DE PREGUNTAS:", min_value=1, max_value=100, value=10, step=1)
+                st.info("ℹ️ No se detectó plantilla en el búnker para este cruce. Operación Manual requerida.")
 
     lista_alumnos_salón = []
     if not df_est.empty:
@@ -117,68 +183,41 @@ def ejecutar():
     if not lista_alumnos_salón:
         lista_alumnos_salón = ["SIN ALUMNOS REGISTRADOS EN ESTE GRADO"]
 
-    # =================================================================
-    # 📥 PASO 2: SECCIÓN DE CAPTURA DE IMAGEN GRÁFICA
-    # =================================================================
     st.markdown("---")
-    st.markdown("### 📷 PASO 2: Procesamiento y Escaneo de la Hoja OMR")
+    st.markdown("### 📷 PASO 2: Procesamiento Óptico (OMR)")
     
-    archivo_imagen = st.file_uploader("SUBA LA FOTOGRAFÍA DE LA TARJETA DE RESPUESTAS (FORMATOS: PNG, JPG, JPEG):", type=["png", "jpg", "jpeg"])
+    archivo_imagen = st.file_uploader("SUBA LA FOTOGRAFÍA DE LA TARJETA DE RESPUESTAS:", type=["png", "jpg", "jpeg"])
 
-    alumno_final = None
+    alumno_final = st.selectbox("👤 SELECCIONE EL ESTUDIANTE A CALIFICAR:", lista_alumnos_salón)
     aciertos_detectados = 0
     mostrar_controles_finales = False
 
     if archivo_imagen is not None:
-        try:
-            file_bytes = np.asarray(bytearray(archivo_imagen.read()), dtype=np.uint8)
-            img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-            
-            if img is None:
-                raise ValueError()
-
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-            thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
-
-            id_burbuja_detectado = 3 
-            idx_real_alumno = id_burbuja_detectado - 1
-            
-            if 0 <= idx_real_alumno < len(lista_alumnos_salón) and lista_alumnos_salón[0] != "SIN ALUMNOS REGISTRADOS EN ESTE GRADO":
-                alumno_final = lista_alumnos_salón[idx_real_alumno]
-                st.image(img, caption="📸 Imagen Indexada por el Motor OpenCV", use_container_width=True, channels="BGR")
+        file_bytes = np.asarray(bytearray(archivo_imagen.read()), dtype=np.uint8)
+        
+        # Validar si tenemos una llave maestra válida para escanear
+        if llave_maestra_lista and len(llave_maestra_lista) == max_preguntas:
+            try:
+                img_procesada, aciertos_auto, contornos = escanear_burbujas_opencv(file_bytes, llave_maestra_lista)
                 
-                st.markdown(f"""
-                    <div class="hud-autonomo">
-                        <p style="margin:0; font-size:12px; color:#a7f3d0; font-weight:bold; text-transform:uppercase;">🤖 RECONOCIMIENTO ÓPTICO EXITOSO (CERO CLICS)</p>
-                        <p style="margin:5px 0 0 0; font-size:22px; font-family:'Arial Black'; font-weight:900;">[LISTA N° {id_burbuja_detectado:02d}] {alumno_final}</p>
-                    </div>
-                    <br>
-                """, unsafe_allow_html=True)
-                
-                aciertos_detectados = st.number_input("🤖 RESPUESTAS CORRECTAS DETECTADAS:", min_value=0, max_value=int(max_preguntas), value=min(int(max_preguntas), 9))
+                if aciertos_auto != -1:
+                    st.image(img_procesada, caption="📸 Imagen Escaneada y Calificada por OpenCV", use_container_width=True, channels="BGR")
+                    st.success(f"🤖 ¡Escaneo exitoso! OpenCV detectó {aciertos_auto} respuestas correctas basado en la Llave Maestra.")
+                    aciertos_detectados = aciertos_auto
+                    mostrar_controles_finales = True
+                else:
+                    raise Exception("Geometría de burbujas no detectada.")
+                    
+            except Exception as e:
+                st.error("⚠️ La foto no tiene la claridad o el formato necesario para el reconocimiento automático. Por favor, digite los aciertos manualmente.")
+                aciertos_detectados = st.number_input("✍️ DIGITE LOS ACIERTOS REALES EVALUADOS VISUALMENTE:", min_value=0, max_value=int(max_preguntas), value=0)
                 mostrar_controles_finales = True
-            else:
-                raise IndexError()
-
-        except Exception as e:
-            st.markdown(f"""
-                <div class="hud-error-omr">
-                    <p style="margin:0; font-size:12px; color:#fca5a5; font-weight:bold; text-transform:uppercase;">⚠️ ALERTA DE LECTURA ÓPTICA (FALLA DE ENFOQUE / SOMBRA)</p>
-                    <p style="margin:5px 0 0 0; font-size:15px; font-family:'Arial'; font-weight:bold;">No se descifraron las burbujas de identidad de forma automática. Proceda manualmente.</p>
-                </div>
-                <br>
-            """, unsafe_allow_html=True)
-            
-            alumno_final = st.selectbox("🚨 SELECCIONE EL ESTUDIANTE MANUALMENTE:", lista_alumnos_salón)
-            aciertos_detectados = st.number_input("✍️ DIGITE LOS ACIERTOS REALES EVALUADOS VISUALMENTE:", min_value=0, max_value=int(max_preguntas), value=0)
+        else:
+            st.warning("No hay una Llave Maestra válida para comparar. Ingrese la nota manualmente.")
+            st.image(archivo_imagen, caption="Imagen Subida")
+            aciertos_detectados = st.number_input("✍️ DIGITE LOS ACIERTOS:", min_value=0, max_value=int(max_preguntas), value=0)
             mostrar_controles_finales = True
-    else:
-        st.info("💡 Esperando captura: Use la cámara de su dispositivo o suba un archivo para encender el motor OMR.")
 
-    # =================================================================
-    # 🧮 COMPONENTE DE CÓMPUTO Y MIGRACIÓN FINAL
-    # =================================================================
     if mostrar_controles_finales:
         preguntas_divisor = max_preguntas if max_preguntas > 0 else 10
         porcentaje_rendimiento = (aciertos_detectados / preguntas_divisor) * 100
@@ -204,11 +243,10 @@ def ejecutar():
             
         with cc2:
             st.markdown("<div style='margin-top:5px;'></div>", unsafe_allow_html=True)
-            boton_inyectar = st.button("🚀 TRANSMITIR CALIFICACIÓN AL BÚNKER", use_container_width=True, type="primary")
+            boton_inyectar = st.button("🚀 TRANSMITIR CALIFICACIÓN", use_container_width=True, type="primary")
 
-        if boton_inyectar and alumno_final and alumno_final != "SIN ALUMNOS REGISTRADOS EN ESTE GRADO":
+        if boton_inyectar and alumno_final != "SIN ALUMNOS REGISTRADOS EN ESTE GRADO":
             firma_estudiante = f"{alumno_final} ({grado_seleccionado})"
-
             payload_nota = {
                 "id_prueba": id_prueba_master,
                 "estudiante": firma_estudiante,
@@ -219,10 +257,10 @@ def ejecutar():
 
             try:
                 supabase.table("respuestas_estudiantes").insert(payload_nota).execute()
-                st.success(f"🎉 ¡ÉXITO TOTAL! Nota inyectada para {alumno_final} en la materia {materia_seleccionada}.")
+                st.success(f"🎉 ¡ÉXITO TOTAL! Nota inyectada para {alumno_final}.")
                 st.balloons()
             except Exception as ex:
-                st.error(f"🚨 Falla en el búnker transaccional: {ex}")
+                st.error(f"🚨 Falla transaccional: {ex}")
 
 if __name__ == "__main__":
     pass
