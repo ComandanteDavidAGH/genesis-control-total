@@ -34,12 +34,12 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     pdf.rect(margen, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
     pdf.rect(ancho_pagina - margen - tam_marcador, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
 
-    pdf.set_fill_color(255, 255, 255) # Limpieza táctica de pincel
+    pdf.set_fill_color(255, 255, 255)
 
     # ==========================================
     # 2. CABECERA INSTITUCIONAL
     # ==========================================
-    pdf.set_y(15)
+    pdf.set_y(18) # Bajamos el bloque entero un poquito respecto al borde superior
     pdf.set_font('helvetica', 'B', 14)
     pdf.cell(0, 8, 'SISTEMA GÉNESIS - HOJA DE RESPUESTAS OMR', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
     
@@ -47,13 +47,15 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     titulo_mostrar = titulo if titulo else "EVALUACIÓN GENERAL"
     pdf.cell(0, 6, f'Prueba: {titulo_mostrar} | Área: {materia} | Grado: {grado}', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
     
-    pdf.ln(4)
+    # ⬇️ CALIBRACIÓN FLECHA 1: Oxígeno entre los títulos y el nombre del estudiante
+    pdf.ln(15) # Antes estaba en 4. ¡Ahora tiene un buen espacio!
+    
     pdf.set_font('helvetica', 'B', 10)
     pdf.cell(130, 8, 'Nombre del Estudiante: _________________________________________', border=0)
     pdf.cell(50, 8, 'Fecha: ______________', border=0, new_x="LMARGIN", new_y="NEXT")
     
     # Línea divisoria principal
-    y_linea_actual = pdf.get_y() # Capturamos la altura exacta donde terminó el texto
+    y_linea_actual = pdf.get_y() + 2 # Bajamos la línea 2mm para que no raye las letras
     pdf.set_draw_color(0, 0, 0)
     pdf.set_line_width(0.5)
     pdf.line(margen, y_linea_actual, ancho_pagina - margen, y_linea_actual)
@@ -61,9 +63,9 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     # ==========================================
     # 📐 DISTRIBUCIÓN MATEMÁTICA DEL ESPACIO
     # ==========================================
-    # Forzamos 25 mm (2.5 cm) de separación absoluta para dar respiro visual
-    inicio_y_cajas = y_linea_actual + 25 
-    alto_cajas = 95 # Altura calibrada para no chocar con los marcadores inferiores
+    # ⬇️ CALIBRACIÓN FLECHA 2: Aumentamos a 30 mm para equilibrar con el espacio superior
+    inicio_y_cajas = y_linea_actual + 30 
+    alto_cajas = 95 
     
     radio = 2.5
     diametro = radio * 2
@@ -94,7 +96,7 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
         pdf.cell(diametro, diametro, f'0{idx+1}', align='C')
 
     for fila in range(10):
-        y_burbuja = y_inicio_burbujas_id + (fila * 7.5) # Distribución vertical calibrada
+        y_burbuja = y_inicio_burbujas_id + (fila * 7.5) 
         for x_col in x_cols_id:
             pdf.ellipse(x_col, y_burbuja, diametro, diametro, 'DF')
             pdf.set_xy(x_col, y_burbuja)
@@ -125,7 +127,7 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
         fila_actual = math.ceil(i / 2) - 1
         
         x_pregunta = inicio_resp_x + 5 if columna_actual == 1 else inicio_resp_x + 60
-        y_pregunta = y_inicio_burbujas_resp + (fila_actual * 7.5) # Distribución vertical calibrada
+        y_pregunta = y_inicio_burbujas_resp + (fila_actual * 7.5) 
         
         pdf.set_xy(x_pregunta, y_pregunta)
         pdf.set_font('helvetica', 'B', 8)
