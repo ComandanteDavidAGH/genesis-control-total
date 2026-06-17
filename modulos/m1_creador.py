@@ -28,11 +28,15 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     margen = 12
     ancho_pagina, alto_pagina = 210, 297
     
+    # Pintar anclajes de negro
     pdf.set_fill_color(0, 0, 0)
     pdf.rect(margen, margen, tam_marcador, tam_marcador, 'F')
     pdf.rect(ancho_pagina - margen - tam_marcador, margen, tam_marcador, tam_marcador, 'F')
     pdf.rect(margen, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
     pdf.rect(ancho_pagina - margen - tam_marcador, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
+
+    # 🧹 ¡LIMPIEZA TÁCTICA DE PINCEL! (Obligatorio para evitar círculos negros)
+    pdf.set_fill_color(255, 255, 255)
 
     # ==========================================
     # 2. CABECERA INSTITUCIONAL
@@ -51,6 +55,7 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     pdf.cell(50, 8, 'Fecha: ______________', border=0, new_x="LMARGIN", new_y="NEXT")
     
     # Línea divisoria principal
+    pdf.set_draw_color(0, 0, 0)
     pdf.set_line_width(0.5)
     pdf.line(margen, pdf.get_y(), ancho_pagina - margen, pdf.get_y())
     pdf.ln(5)
@@ -65,12 +70,12 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     inicio_id_x = 20
     inicio_y_cajas = pdf.get_y() + 5
     
-    # Caja contenedora (Línea gris para enmarcar, imitando la línea punteada)
+    # Caja contenedora
     pdf.set_draw_color(180, 180, 180) 
     pdf.set_line_width(0.5)
     pdf.rect(inicio_id_x - 5, inicio_y_cajas, 55, 95, 'D')
     
-    # Restaurar color de línea a negro para textos y círculos
+    # Restaurar contorno a negro para textos
     pdf.set_draw_color(0, 0, 0)
     pdf.set_line_width(0.2)
     
@@ -93,9 +98,10 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     for fila in range(10):
         y_burbuja = y_inicio_burbujas_id + (fila * 7)
         for x_col in x_cols_id:
-            pdf.ellipse(x_col, y_burbuja, diametro, diametro, 'D')
+            # Usamos 'DF' (Draw + Fill) para forzar que el interior sea blanco absoluto
+            pdf.ellipse(x_col, y_burbuja, diametro, diametro, 'DF')
             pdf.set_xy(x_col, y_burbuja)
-            pdf.cell(diametro, diametro, str(fila), align='C') # Centra el número en el círculo
+            pdf.cell(diametro, diametro, str(fila), align='C')
 
     # ==========================================
     # 4. ZONA: RESPUESTAS (2 Columnas)
@@ -105,7 +111,6 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     # Caja contenedora de Respuestas
     pdf.set_draw_color(180, 180, 180)
     pdf.set_line_width(0.5)
-    # Calculamos alto dinámico (o fijo para 20 preguntas)
     pdf.rect(inicio_resp_x - 5, inicio_y_cajas, 120, 95, 'D') 
     
     pdf.set_draw_color(0, 0, 0)
@@ -121,26 +126,23 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     espacio_entre_opciones = 7
     
     for i in range(1, num_preguntas + 1):
-        # Lógica de distribución: Impar a la izquierda, Par a la derecha
         columna_actual = 1 if i % 2 != 0 else 2
         fila_actual = math.ceil(i / 2) - 1
         
-        # Coordenadas X e Y de la pregunta
         x_pregunta = inicio_resp_x + 5 if columna_actual == 1 else inicio_resp_x + 60
         y_pregunta = y_inicio_burbujas_resp + (fila_actual * 7)
         
-        # Imprimir P01, P02...
         pdf.set_xy(x_pregunta, y_pregunta)
         pdf.set_font('helvetica', 'B', 8)
         pdf.cell(8, diametro, f'P{i:02d}', align='R')
         
-        # Dibujar Círculos A, B, C, D, E
         pdf.set_font('helvetica', '', 7)
         for idx_opc, letra in enumerate(opciones):
             x_burbuja = x_pregunta + 10 + (idx_opc * espacio_entre_opciones)
-            pdf.ellipse(x_burbuja, y_pregunta, diametro, diametro, 'D')
+            # Usamos 'DF' para asegurar burbujas limpias y vacías
+            pdf.ellipse(x_burbuja, y_pregunta, diametro, diametro, 'DF')
             pdf.set_xy(x_burbuja, y_pregunta)
-            pdf.cell(diametro, diametro, letra, align='C') # Centra la letra en el círculo
+            pdf.cell(diametro, diametro, letra, align='C')
 
     return pdf.output()
 # =================================================================
