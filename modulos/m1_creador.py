@@ -2,6 +2,7 @@ import streamlit as st
 from estilos_globales import inyectar_estilos_omega
 import pandas as pd
 from supabase import create_client
+from fpdf import FPDF
 
 # =================================================================
 # 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
@@ -11,6 +12,75 @@ def iniciar_conexion():
     key = st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
+# =================================================================
+# 🖨️ MOTOR GENERADOR DE PLANTILLAS OMR (fpdf2)
+# =================================================================
+def generar_pdf_omr(titulo, materia, grado, num_preguntas):
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.add_page()
+    
+    # 1. DIBUJAR MARCADORES FIDUCIARIOS (Esquinas para OpenCV)
+    tam_marcador = 10 
+    margen_x, margen_y = 10, 10
+    ancho_pagina, alto_pagina = 210, 297
+    
+    pdf.set_fill_color(0, 0, 0)
+    pdf.rect(margen_x, margen_y, tam_marcador, tam_marcador, 'F')
+    pdf.rect(ancho_pagina - margen_x - tam_marcador, margen_y, tam_marcador, tam_marcador, 'F')
+    pdf.rect(margen_x, alto_pagina - margen_y - tam_marcador, tam_marcador, tam_marcador, 'F')
+    pdf.rect(ancho_pagina - margen_x - tam_marcador, alto_pagina - margen_y - tam_marcador, tam_marcador, tam_marcador, 'F')
+
+    # 2. CABECERA INSTITUCIONAL
+    pdf.set_font('helvetica', 'B', 16)
+    pdf.set_y(15)
+    pdf.cell(0, 10, 'SISTEMA GENESIS - HOJA DE RESPUESTAS OMR', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
+    
+    pdf.set_font('helvetica', '', 11)
+    # Limpiamos el título en caso de que esté vacío
+    titulo_mostrar = titulo if titulo else "EVALUACION GENERAL"
+    pdf.cell(0, 8, f'Materia: {materia} | Grado: {grado} | Prueba: {titulo_mostrar}', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
+    
+    pdf.cell(120, 8, 'Nombre del Estudiante: _________________________________________', border=0)
+    pdf.cell(50, 8, 'Fecha: ______________', border=0, new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(8)
+
+    # 3. ZONA MATRIZ DE ID GÉNESIS (4 Columnas x 10 Filas)
+    pdf.set_font('helvetica', 'B', 10)
+    pdf.cell(0, 8, 'ID GENESIS (4 DIGITOS):', border=0, new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('helvetica', '', 9)
+    
+    inicio_x = 15
+    inicio_y = pdf.get_y()
+    
+    # Dibujar las 10 filas (0 al 9) en 4 columnas
+    for fila in range(10): 
+        pdf.set_xy(inicio_x, inicio_y + (fila * 6))
+        for col in range(4):
+            pdf.cell(10, 6, f'({fila})', border=0, align='C')
+    
+    # Empujar el cursor debajo de la matriz de ID
+    pdf.set_y(inicio_y + 65) 
+
+    # 4. ZONA DE RESPUESTAS DINÁMICAS
+    pdf.set_font('helvetica', 'B', 10)
+    pdf.cell(0, 8, 'ZONA DE RESPUESTAS:', border=0, new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('helvetica', '', 9)
+    
+    # Imprimir solo la cantidad de preguntas activas con opciones A, B, C, D, E
+    for i in range(1, num_preguntas + 1):
+        pdf.cell(15, 6, f'Q{i:02d}.', border=0)
+        pdf.cell(10, 6, '(A)', border=0)
+        pdf.cell(10, 6, '(B)', border=0)
+        pdf.cell(10, 6, '(C)', border=0)
+        pdf.cell(10, 6, '(D)', border=0)
+        pdf.cell(10, 6, '(E)', border=0, new_x="LMARGIN", new_y="NEXT")
+
+    return pdf.output()
+
+# =================================================================
+# 🚀 FUNCIÓN PRINCIPAL DE EJECUCIÓN
+# =================================================================
 def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro (Prioridad Alta)
     inyectar_estilos_omega()
@@ -64,7 +134,6 @@ def ejecutar():
         with r2_c2: nota_maxima = st.number_input("💯 NOTA MÁXIMA:", min_value=1.0, max_value=10.0, value=5.0, step=0.1)
 
         r3_c1, r3_c2 = st.columns(2)
-        # 🔥 AQUÍ ESTÁ EL AJUSTE INSTITUCIONAL SOLICITADO 🔥
         with r3_c1: tipo_evaluacion = st.selectbox("📝 TIPO:", ["QUIZ", "TALLER", "EXPOSICIÓN", "EVALUACIÓN FINAL PERIODO"])
         with r3_c2: periodo_academico = st.selectbox("📂 PERIODO:", ["PRIMER PERIODO", "SEGUNDO PERIODO", "TERCER PERIODO", "CUARTO PERIODO"])
 
@@ -82,13 +151,14 @@ def ejecutar():
             with cols_matriz[(i - 1) % 4]:
                 claves_seleccionadas[f"p{i}"] = st.selectbox(f"PREGUNTA {i:02d}:", ["A", "B", "C", "D", "E", "N/A"], key=f"key_p_{i}")
 
+    # Pre-cálculo de preguntas activas para retroalimentación visual
+    preguntas_activas = len([v for v in claves_seleccionadas.values() if v != "N/A"])
+
     # =================================================================
     # 💾 PASO 3: SALVAGUARDA EN LA BASE DE DATOS
     # =================================================================
     st.markdown("---")
-    
-    # Pre-cálculo de preguntas activas para retroalimentación visual
-    preguntas_activas = len([v for v in claves_seleccionadas.values() if v != "N/A"])
+    st.markdown("### 💾 PASO 3: Indexación")
     
     if st.button(f"🚀 SALVAGUARDAR EVALUACIÓN EN EL BÚNKER ({preguntas_activas} Preguntas)", use_container_width=True, type="primary"):
         if not nombre_evaluacion:
@@ -110,6 +180,27 @@ def ejecutar():
                 st.balloons()
             except Exception as e:
                 st.error(f"🚨 Falla en el búnker transaccional: {e}")
+
+    # =================================================================
+    # 🖨️ PASO 4: GENERACIÓN DE PLANTILLA OMR (MODO UNIVERSAL)
+    # =================================================================
+    st.markdown("---")
+    st.markdown("### 🖨️ PASO 4: Impresión de Operaciones Físicas")
+    st.info("Despliegue la plantilla maestra con los marcadores fiduciarios y la matriz de ID. Solo se generarán las filas de las preguntas activas.")
+    
+    if preguntas_activas > 0:
+        # Generar el PDF en memoria utilizando las variables actuales del formulario
+        pdf_bytes = generar_pdf_omr(nombre_evaluacion, asignatura, grado_objetivo, preguntas_activas)
+        
+        st.download_button(
+            label=f"📄 DESCARGAR PLANTILLA OMR - {grado_objetivo} ({preguntas_activas} PREGUNTAS)",
+            data=bytes(pdf_bytes),
+            file_name=f"OMR_{asignatura.replace(' ', '_')}_{grado_objetivo}.pdf",
+            mime="application/pdf",
+            type="secondary"
+        )
+    else:
+        st.warning("⚠️ Debe configurar al menos 1 pregunta en el Paso 2 para habilitar la descarga de la plantilla.")
 
 if __name__ == "__main__":
     ejecutar()
