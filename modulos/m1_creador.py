@@ -28,15 +28,13 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     margen = 12
     ancho_pagina, alto_pagina = 210, 297
     
-    # Pintar anclajes de negro
     pdf.set_fill_color(0, 0, 0)
     pdf.rect(margen, margen, tam_marcador, tam_marcador, 'F')
     pdf.rect(ancho_pagina - margen - tam_marcador, margen, tam_marcador, tam_marcador, 'F')
     pdf.rect(margen, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
     pdf.rect(ancho_pagina - margen - tam_marcador, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
 
-    # 🧹 LIMPIEZA TÁCTICA DE PINCEL
-    pdf.set_fill_color(255, 255, 255)
+    pdf.set_fill_color(255, 255, 255) # Limpieza táctica de pincel
 
     # ==========================================
     # 2. CABECERA INSTITUCIONAL
@@ -55,14 +53,18 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     pdf.cell(50, 8, 'Fecha: ______________', border=0, new_x="LMARGIN", new_y="NEXT")
     
     # Línea divisoria principal
+    y_linea_actual = pdf.get_y() # Capturamos la altura exacta donde terminó el texto
     pdf.set_draw_color(0, 0, 0)
     pdf.set_line_width(0.5)
-    pdf.line(margen, pdf.get_y(), ancho_pagina - margen, pdf.get_y())
-    
-    # ⬇️ ESPACIO DE RESPIRACIÓN AÑADIDO AQUÍ (Sugerencia estética aplicada)
-    pdf.ln(12) 
+    pdf.line(margen, y_linea_actual, ancho_pagina - margen, y_linea_actual)
 
-    # Variables geométricas para las burbujas
+    # ==========================================
+    # 📐 DISTRIBUCIÓN MATEMÁTICA DEL ESPACIO
+    # ==========================================
+    # Forzamos 25 mm (2.5 cm) de separación absoluta para dar respiro visual
+    inicio_y_cajas = y_linea_actual + 25 
+    alto_cajas = 95 # Altura calibrada para no chocar con los marcadores inferiores
+    
     radio = 2.5
     diametro = radio * 2
 
@@ -70,18 +72,14 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     # 3. ZONA: CÓDIGO DE ESTUDIANTE (4 Dígitos)
     # ==========================================
     inicio_id_x = 20
-    inicio_y_cajas = pdf.get_y() # Ahora toma la posición 'Y' con el salto extra incluido
     
-    # Caja contenedora
     pdf.set_draw_color(180, 180, 180) 
     pdf.set_line_width(0.5)
-    pdf.rect(inicio_id_x - 5, inicio_y_cajas, 55, 95, 'D')
+    pdf.rect(inicio_id_x - 5, inicio_y_cajas, 55, alto_cajas, 'D')
     
-    # Restaurar contorno a negro para textos
     pdf.set_draw_color(0, 0, 0)
     pdf.set_line_width(0.2)
     
-    # Título del Bloque ID
     pdf.set_xy(inicio_id_x, inicio_y_cajas + 2)
     pdf.set_font('helvetica', 'B', 9)
     pdf.cell(45, 5, 'ID ESTUDIANTE', border=0, align='C')
@@ -91,14 +89,12 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     
     pdf.set_font('helvetica', '', 8)
     
-    # Encabezado de columnas (01, 02, 03, 04)
     for idx, x_col in enumerate(x_cols_id):
         pdf.set_xy(x_col, y_inicio_burbujas_id - 5)
         pdf.cell(diametro, diametro, f'0{idx+1}', align='C')
 
-    # Dibujar Matriz (0 al 9)
     for fila in range(10):
-        y_burbuja = y_inicio_burbujas_id + (fila * 7)
+        y_burbuja = y_inicio_burbujas_id + (fila * 7.5) # Distribución vertical calibrada
         for x_col in x_cols_id:
             pdf.ellipse(x_col, y_burbuja, diametro, diametro, 'DF')
             pdf.set_xy(x_col, y_burbuja)
@@ -109,15 +105,13 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     # ==========================================
     inicio_resp_x = 80
     
-    # Caja contenedora de Respuestas
     pdf.set_draw_color(180, 180, 180)
     pdf.set_line_width(0.5)
-    pdf.rect(inicio_resp_x - 5, inicio_y_cajas, 120, 95, 'D') 
+    pdf.rect(inicio_resp_x - 5, inicio_y_cajas, 120, alto_cajas, 'D') 
     
     pdf.set_draw_color(0, 0, 0)
     pdf.set_line_width(0.2)
     
-    # Título del Bloque Respuestas
     pdf.set_xy(inicio_resp_x, inicio_y_cajas + 2)
     pdf.set_font('helvetica', 'B', 9)
     pdf.cell(110, 5, 'ZONA DE RESPUESTAS', border=0, align='C')
@@ -131,7 +125,7 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
         fila_actual = math.ceil(i / 2) - 1
         
         x_pregunta = inicio_resp_x + 5 if columna_actual == 1 else inicio_resp_x + 60
-        y_pregunta = y_inicio_burbujas_resp + (fila_actual * 7)
+        y_pregunta = y_inicio_burbujas_resp + (fila_actual * 7.5) # Distribución vertical calibrada
         
         pdf.set_xy(x_pregunta, y_pregunta)
         pdf.set_font('helvetica', 'B', 8)
