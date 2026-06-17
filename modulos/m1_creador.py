@@ -35,7 +35,7 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     pdf.rect(margen, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
     pdf.rect(ancho_pagina - margen - tam_marcador, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
 
-    # 🧹 ¡LIMPIEZA TÁCTICA DE PINCEL! (Obligatorio para evitar círculos negros)
+    # 🧹 LIMPIEZA TÁCTICA DE PINCEL
     pdf.set_fill_color(255, 255, 255)
 
     # ==========================================
@@ -58,7 +58,9 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     pdf.set_draw_color(0, 0, 0)
     pdf.set_line_width(0.5)
     pdf.line(margen, pdf.get_y(), ancho_pagina - margen, pdf.get_y())
-    pdf.ln(5)
+    
+    # ⬇️ ESPACIO DE RESPIRACIÓN AÑADIDO AQUÍ (Sugerencia estética aplicada)
+    pdf.ln(12) 
 
     # Variables geométricas para las burbujas
     radio = 2.5
@@ -68,7 +70,7 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     # 3. ZONA: CÓDIGO DE ESTUDIANTE (4 Dígitos)
     # ==========================================
     inicio_id_x = 20
-    inicio_y_cajas = pdf.get_y() + 5
+    inicio_y_cajas = pdf.get_y() # Ahora toma la posición 'Y' con el salto extra incluido
     
     # Caja contenedora
     pdf.set_draw_color(180, 180, 180) 
@@ -98,7 +100,6 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     for fila in range(10):
         y_burbuja = y_inicio_burbujas_id + (fila * 7)
         for x_col in x_cols_id:
-            # Usamos 'DF' (Draw + Fill) para forzar que el interior sea blanco absoluto
             pdf.ellipse(x_col, y_burbuja, diametro, diametro, 'DF')
             pdf.set_xy(x_col, y_burbuja)
             pdf.cell(diametro, diametro, str(fila), align='C')
@@ -139,7 +140,6 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
         pdf.set_font('helvetica', '', 7)
         for idx_opc, letra in enumerate(opciones):
             x_burbuja = x_pregunta + 10 + (idx_opc * espacio_entre_opciones)
-            # Usamos 'DF' para asegurar burbujas limpias y vacías
             pdf.ellipse(x_burbuja, y_pregunta, diametro, diametro, 'DF')
             pdf.set_xy(x_burbuja, y_pregunta)
             pdf.cell(diametro, diametro, letra, align='C')
