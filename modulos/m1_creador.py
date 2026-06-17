@@ -2,6 +2,7 @@ import streamlit as st
 from estilos_globales import inyectar_estilos_omega
 import pandas as pd
 from supabase import create_client
+import math
 from fpdf import FPDF
 
 # =================================================================
@@ -15,69 +16,133 @@ def iniciar_conexion():
 # =================================================================
 # 🖨️ MOTOR GENERADOR DE PLANTILLAS OMR (fpdf2)
 # =================================================================
+
 def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     pdf = FPDF(orientation='P', unit='mm', format='A4')
     pdf.add_page()
     
-    # 1. DIBUJAR MARCADORES FIDUCIARIOS (Esquinas para OpenCV)
-    tam_marcador = 10 
-    margen_x, margen_y = 10, 10
+    # ==========================================
+    # 1. MARCADORES FIDUCIARIOS (El ancla)
+    # ==========================================
+    tam_marcador = 8 
+    margen = 12
     ancho_pagina, alto_pagina = 210, 297
     
     pdf.set_fill_color(0, 0, 0)
-    pdf.rect(margen_x, margen_y, tam_marcador, tam_marcador, 'F')
-    pdf.rect(ancho_pagina - margen_x - tam_marcador, margen_y, tam_marcador, tam_marcador, 'F')
-    pdf.rect(margen_x, alto_pagina - margen_y - tam_marcador, tam_marcador, tam_marcador, 'F')
-    pdf.rect(ancho_pagina - margen_x - tam_marcador, alto_pagina - margen_y - tam_marcador, tam_marcador, tam_marcador, 'F')
+    pdf.rect(margen, margen, tam_marcador, tam_marcador, 'F')
+    pdf.rect(ancho_pagina - margen - tam_marcador, margen, tam_marcador, tam_marcador, 'F')
+    pdf.rect(margen, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
+    pdf.rect(ancho_pagina - margen - tam_marcador, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
 
+    # ==========================================
     # 2. CABECERA INSTITUCIONAL
-    pdf.set_font('helvetica', 'B', 16)
+    # ==========================================
     pdf.set_y(15)
-    pdf.cell(0, 10, 'SISTEMA GENESIS - HOJA DE RESPUESTAS OMR', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font('helvetica', 'B', 14)
+    pdf.cell(0, 8, 'SISTEMA GÉNESIS - HOJA DE RESPUESTAS OMR', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
     
-    pdf.set_font('helvetica', '', 11)
-    # Limpiamos el título en caso de que esté vacío
-    titulo_mostrar = titulo if titulo else "EVALUACION GENERAL"
-    pdf.cell(0, 8, f'Materia: {materia} | Grado: {grado} | Prueba: {titulo_mostrar}', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(5)
+    pdf.set_font('helvetica', '', 10)
+    titulo_mostrar = titulo if titulo else "EVALUACIÓN GENERAL"
+    pdf.cell(0, 6, f'Prueba: {titulo_mostrar} | Área: {materia} | Grado: {grado}', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
     
-    pdf.cell(120, 8, 'Nombre del Estudiante: _________________________________________', border=0)
+    pdf.ln(4)
+    pdf.set_font('helvetica', 'B', 10)
+    pdf.cell(130, 8, 'Nombre del Estudiante: _________________________________________', border=0)
     pdf.cell(50, 8, 'Fecha: ______________', border=0, new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(8)
+    
+    # Línea divisoria principal
+    pdf.set_line_width(0.5)
+    pdf.line(margen, pdf.get_y(), ancho_pagina - margen, pdf.get_y())
+    pdf.ln(5)
 
-    # 3. ZONA MATRIZ DE ID GÉNESIS (4 Columnas x 10 Filas)
-    pdf.set_font('helvetica', 'B', 10)
-    pdf.cell(0, 8, 'ID GENESIS (4 DIGITOS):', border=0, new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('helvetica', '', 9)
-    
-    inicio_x = 15
-    inicio_y = pdf.get_y()
-    
-    # Dibujar las 10 filas (0 al 9) en 4 columnas
-    for fila in range(10): 
-        pdf.set_xy(inicio_x, inicio_y + (fila * 6))
-        for col in range(4):
-            pdf.cell(10, 6, f'({fila})', border=0, align='C')
-    
-    # Empujar el cursor debajo de la matriz de ID
-    pdf.set_y(inicio_y + 65) 
+    # Variables geométricas para las burbujas
+    radio = 2.5
+    diametro = radio * 2
 
-    # 4. ZONA DE RESPUESTAS DINÁMICAS
-    pdf.set_font('helvetica', 'B', 10)
-    pdf.cell(0, 8, 'ZONA DE RESPUESTAS:', border=0, new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font('helvetica', '', 9)
+    # ==========================================
+    # 3. ZONA: CÓDIGO DE ESTUDIANTE (4 Dígitos)
+    # ==========================================
+    inicio_id_x = 20
+    inicio_y_cajas = pdf.get_y() + 5
     
-    # Imprimir solo la cantidad de preguntas activas con opciones A, B, C, D, E
+    # Caja contenedora (Línea gris para enmarcar, imitando la línea punteada)
+    pdf.set_draw_color(180, 180, 180) 
+    pdf.set_line_width(0.5)
+    pdf.rect(inicio_id_x - 5, inicio_y_cajas, 55, 95, 'D')
+    
+    # Restaurar color de línea a negro para textos y círculos
+    pdf.set_draw_color(0, 0, 0)
+    pdf.set_line_width(0.2)
+    
+    # Título del Bloque ID
+    pdf.set_xy(inicio_id_x, inicio_y_cajas + 2)
+    pdf.set_font('helvetica', 'B', 9)
+    pdf.cell(45, 5, 'ID ESTUDIANTE', border=0, align='C')
+    
+    x_cols_id = [inicio_id_x + 6, inicio_id_x + 16, inicio_id_x + 26, inicio_id_x + 36]
+    y_inicio_burbujas_id = inicio_y_cajas + 15
+    
+    pdf.set_font('helvetica', '', 8)
+    
+    # Encabezado de columnas (01, 02, 03, 04)
+    for idx, x_col in enumerate(x_cols_id):
+        pdf.set_xy(x_col, y_inicio_burbujas_id - 5)
+        pdf.cell(diametro, diametro, f'0{idx+1}', align='C')
+
+    # Dibujar Matriz (0 al 9)
+    for fila in range(10):
+        y_burbuja = y_inicio_burbujas_id + (fila * 7)
+        for x_col in x_cols_id:
+            pdf.ellipse(x_col, y_burbuja, diametro, diametro, 'D')
+            pdf.set_xy(x_col, y_burbuja)
+            pdf.cell(diametro, diametro, str(fila), align='C') # Centra el número en el círculo
+
+    # ==========================================
+    # 4. ZONA: RESPUESTAS (2 Columnas)
+    # ==========================================
+    inicio_resp_x = 80
+    
+    # Caja contenedora de Respuestas
+    pdf.set_draw_color(180, 180, 180)
+    pdf.set_line_width(0.5)
+    # Calculamos alto dinámico (o fijo para 20 preguntas)
+    pdf.rect(inicio_resp_x - 5, inicio_y_cajas, 120, 95, 'D') 
+    
+    pdf.set_draw_color(0, 0, 0)
+    pdf.set_line_width(0.2)
+    
+    # Título del Bloque Respuestas
+    pdf.set_xy(inicio_resp_x, inicio_y_cajas + 2)
+    pdf.set_font('helvetica', 'B', 9)
+    pdf.cell(110, 5, 'ZONA DE RESPUESTAS', border=0, align='C')
+    
+    opciones = ['A', 'B', 'C', 'D', 'E']
+    y_inicio_burbujas_resp = inicio_y_cajas + 15
+    espacio_entre_opciones = 7
+    
     for i in range(1, num_preguntas + 1):
-        pdf.cell(15, 6, f'Q{i:02d}.', border=0)
-        pdf.cell(10, 6, '(A)', border=0)
-        pdf.cell(10, 6, '(B)', border=0)
-        pdf.cell(10, 6, '(C)', border=0)
-        pdf.cell(10, 6, '(D)', border=0)
-        pdf.cell(10, 6, '(E)', border=0, new_x="LMARGIN", new_y="NEXT")
+        # Lógica de distribución: Impar a la izquierda, Par a la derecha
+        columna_actual = 1 if i % 2 != 0 else 2
+        fila_actual = math.ceil(i / 2) - 1
+        
+        # Coordenadas X e Y de la pregunta
+        x_pregunta = inicio_resp_x + 5 if columna_actual == 1 else inicio_resp_x + 60
+        y_pregunta = y_inicio_burbujas_resp + (fila_actual * 7)
+        
+        # Imprimir P01, P02...
+        pdf.set_xy(x_pregunta, y_pregunta)
+        pdf.set_font('helvetica', 'B', 8)
+        pdf.cell(8, diametro, f'P{i:02d}', align='R')
+        
+        # Dibujar Círculos A, B, C, D, E
+        pdf.set_font('helvetica', '', 7)
+        for idx_opc, letra in enumerate(opciones):
+            x_burbuja = x_pregunta + 10 + (idx_opc * espacio_entre_opciones)
+            pdf.ellipse(x_burbuja, y_pregunta, diametro, diametro, 'D')
+            pdf.set_xy(x_burbuja, y_pregunta)
+            pdf.cell(diametro, diametro, letra, align='C') # Centra la letra en el círculo
 
     return pdf.output()
-
 # =================================================================
 # 🚀 FUNCIÓN PRINCIPAL DE EJECUCIÓN
 # =================================================================
