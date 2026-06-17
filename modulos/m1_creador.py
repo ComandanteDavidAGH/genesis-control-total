@@ -4,6 +4,7 @@ import pandas as pd
 from supabase import create_client
 import math
 from fpdf import FPDF
+from datetime import datetime
 
 # =================================================================
 # 🔒 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
@@ -17,128 +18,158 @@ def iniciar_conexion():
 # 🖨️ MOTOR GENERADOR DE PLANTILLAS OMR (fpdf2)
 # =================================================================
 
-def generar_pdf_omr(titulo, materia, grado, num_preguntas):
+def generar_pdf_curso_omr(titulo, materia, grado, num_preguntas, lista_estudiantes):
+    """
+    Genera un PDF multipágina.
+    lista_estudiantes debe ser una lista de diccionarios, ej:
+    [{"nombre": "Pacheco Jorge", "id": "0123"}, {"nombre": "Gomez Maria", "id": "4567"}]
+    """
     pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.add_page()
     
-    # ==========================================
-    # 1. MARCADORES FIDUCIARIOS (El ancla)
-    # ==========================================
+    # Configuraciones globales
     tam_marcador = 8 
     margen = 12
     ancho_pagina, alto_pagina = 210, 297
-    
-    pdf.set_fill_color(0, 0, 0)
-    pdf.rect(margen, margen, tam_marcador, tam_marcador, 'F')
-    pdf.rect(ancho_pagina - margen - tam_marcador, margen, tam_marcador, tam_marcador, 'F')
-    pdf.rect(margen, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
-    pdf.rect(ancho_pagina - margen - tam_marcador, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
-
-    pdf.set_fill_color(255, 255, 255)
-
-    # ==========================================
-    # 2. CABECERA INSTITUCIONAL
-    # ==========================================
-    pdf.set_y(18) # Bajamos el bloque entero un poquito respecto al borde superior
-    pdf.set_font('helvetica', 'B', 14)
-    pdf.cell(0, 8, 'SISTEMA GÉNESIS - HOJA DE RESPUESTAS OMR', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
-    
-    pdf.set_font('helvetica', '', 10)
-    titulo_mostrar = titulo if titulo else "EVALUACIÓN GENERAL"
-    pdf.cell(0, 6, f'Prueba: {titulo_mostrar} | Área: {materia} | Grado: {grado}', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
-    
-    # ⬇️ CALIBRACIÓN FLECHA 1: Oxígeno entre los títulos y el nombre del estudiante
-    pdf.ln(15) # Antes estaba en 4. ¡Ahora tiene un buen espacio!
-    
-    pdf.set_font('helvetica', 'B', 10)
-    pdf.cell(130, 8, 'Nombre del Estudiante: _________________________________________', border=0)
-    pdf.cell(50, 8, 'Fecha: ______________', border=0, new_x="LMARGIN", new_y="NEXT")
-    
-    # Línea divisoria principal
-    y_linea_actual = pdf.get_y() + 2 # Bajamos la línea 2mm para que no raye las letras
-    pdf.set_draw_color(0, 0, 0)
-    pdf.set_line_width(0.5)
-    pdf.line(margen, y_linea_actual, ancho_pagina - margen, y_linea_actual)
-
-    # ==========================================
-    # 📐 DISTRIBUCIÓN MATEMÁTICA DEL ESPACIO
-    # ==========================================
-    # ⬇️ CALIBRACIÓN FLECHA 2: Aumentamos a 30 mm para equilibrar con el espacio superior
-    inicio_y_cajas = y_linea_actual + 30 
-    alto_cajas = 95 
-    
     radio = 2.5
     diametro = radio * 2
-
-    # ==========================================
-    # 3. ZONA: CÓDIGO DE ESTUDIANTE (4 Dígitos)
-    # ==========================================
-    inicio_id_x = 20
+    fecha_hoy = datetime.now().strftime("%d/%m/%Y")
     
-    pdf.set_draw_color(180, 180, 180) 
-    pdf.set_line_width(0.5)
-    pdf.rect(inicio_id_x - 5, inicio_y_cajas, 55, alto_cajas, 'D')
-    
-    pdf.set_draw_color(0, 0, 0)
-    pdf.set_line_width(0.2)
-    
-    pdf.set_xy(inicio_id_x, inicio_y_cajas + 2)
-    pdf.set_font('helvetica', 'B', 9)
-    pdf.cell(45, 5, 'ID ESTUDIANTE', border=0, align='C')
-    
-    x_cols_id = [inicio_id_x + 6, inicio_id_x + 16, inicio_id_x + 26, inicio_id_x + 36]
-    y_inicio_burbujas_id = inicio_y_cajas + 15
-    
-    pdf.set_font('helvetica', '', 8)
-    
-    for idx, x_col in enumerate(x_cols_id):
-        pdf.set_xy(x_col, y_inicio_burbujas_id - 5)
-        pdf.cell(diametro, diametro, f'0{idx+1}', align='C')
-
-    for fila in range(10):
-        y_burbuja = y_inicio_burbujas_id + (fila * 7.5) 
-        for x_col in x_cols_id:
-            pdf.ellipse(x_col, y_burbuja, diametro, diametro, 'DF')
-            pdf.set_xy(x_col, y_burbuja)
-            pdf.cell(diametro, diametro, str(fila), align='C')
-
-    # ==========================================
-    # 4. ZONA: RESPUESTAS (2 Columnas)
-    # ==========================================
-    inicio_resp_x = 80
-    
-    pdf.set_draw_color(180, 180, 180)
-    pdf.set_line_width(0.5)
-    pdf.rect(inicio_resp_x - 5, inicio_y_cajas, 120, alto_cajas, 'D') 
-    
-    pdf.set_draw_color(0, 0, 0)
-    pdf.set_line_width(0.2)
-    
-    pdf.set_xy(inicio_resp_x, inicio_y_cajas + 2)
-    pdf.set_font('helvetica', 'B', 9)
-    pdf.cell(110, 5, 'ZONA DE RESPUESTAS', border=0, align='C')
-    
-    opciones = ['A', 'B', 'C', 'D', 'E']
-    y_inicio_burbujas_resp = inicio_y_cajas + 15
-    espacio_entre_opciones = 7
-    
-    for i in range(1, num_preguntas + 1):
-        columna_actual = 1 if i % 2 != 0 else 2
-        fila_actual = math.ceil(i / 2) - 1
+    # BUCLE PRINCIPAL: Una hoja por cada estudiante
+    for estudiante in lista_estudiantes:
+        pdf.add_page()
         
-        x_pregunta = inicio_resp_x + 5 if columna_actual == 1 else inicio_resp_x + 60
-        y_pregunta = y_inicio_burbujas_resp + (fila_actual * 7.5) 
+        nombre_est = estudiante.get("nombre", "ESTUDIANTE NO REGISTRADO")
+        # Aseguramos que el ID tenga 4 dígitos (rellenando con ceros a la izquierda si es necesario)
+        id_est = str(estudiante.get("id", "0000")).zfill(4) 
         
-        pdf.set_xy(x_pregunta, y_pregunta)
-        pdf.set_font('helvetica', 'B', 8)
-        pdf.cell(8, diametro, f'P{i:02d}', align='R')
+        # ==========================================
+        # 1. MARCADORES FIDUCIARIOS (El ancla)
+        # ==========================================
+        pdf.set_fill_color(0, 0, 0)
+        pdf.rect(margen, margen, tam_marcador, tam_marcador, 'F')
+        pdf.rect(ancho_pagina - margen - tam_marcador, margen, tam_marcador, tam_marcador, 'F')
+        pdf.rect(margen, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
+        pdf.rect(ancho_pagina - margen - tam_marcador, alto_pagina - margen - tam_marcador, tam_marcador, tam_marcador, 'F')
+
+        pdf.set_fill_color(255, 255, 255)
+
+        # ==========================================
+        # 2. CABECERA INSTITUCIONAL PERSONALIZADA
+        # ==========================================
+        pdf.set_y(18)
+        pdf.set_font('helvetica', 'B', 14)
+        pdf.cell(0, 8, 'SISTEMA GÉNESIS - HOJA DE RESPUESTAS OMR', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
         
-        pdf.set_font('helvetica', '', 7)
-        for idx_opc, letra in enumerate(opciones):
-            x_burbuja = x_pregunta + 10 + (idx_opc * espacio_entre_opciones)
-            pdf.ellipse(x_burbuja, y_pregunta, diametro, diametro, 'DF')
-            pdf.set_xy(x_burbuja, y_pregunta)
-            pdf.cell(diametro, diametro, letra, align='C')
+        pdf.set_font('helvetica', '', 10)
+        titulo_mostrar = titulo if titulo else "EVALUACIÓN GENERAL"
+        pdf.cell(0, 6, f'Prueba: {titulo_mostrar} | Área: {materia} | Grado: {grado}', border=0, align='C', new_x="LMARGIN", new_y="NEXT")
+        
+        pdf.ln(15) 
+        
+        pdf.set_font('helvetica', 'B', 10)
+        # Inyectamos el nombre del estudiante y la fecha en la línea
+        pdf.cell(130, 8, f'Nombre del Estudiante: {nombre_est.upper()}', border=0)
+        pdf.cell(50, 8, f'Fecha: {fecha_hoy}', border=0, new_x="LMARGIN", new_y="NEXT")
+        
+        # Línea divisoria principal
+        y_linea_actual = pdf.get_y() + 2 
+        pdf.set_draw_color(0, 0, 0)
+        pdf.set_line_width(0.5)
+        pdf.line(margen, y_linea_actual, ancho_pagina - margen, y_linea_actual)
+
+        # ==========================================
+        # 📐 DISTRIBUCIÓN MATEMÁTICA DEL ESPACIO
+        # ==========================================
+        inicio_y_cajas = y_linea_actual + 30 
+        alto_cajas = 95 
+
+        # ==========================================
+        # 3. ZONA: CÓDIGO DE ESTUDIANTE (AUTORELLENADO)
+        # ==========================================
+        inicio_id_x = 20
+        
+        pdf.set_draw_color(180, 180, 180) 
+        pdf.set_line_width(0.5)
+        pdf.rect(inicio_id_x - 5, inicio_y_cajas, 55, alto_cajas, 'D')
+        
+        pdf.set_draw_color(0, 0, 0)
+        pdf.set_line_width(0.2)
+        
+        pdf.set_xy(inicio_id_x, inicio_y_cajas + 2)
+        pdf.set_font('helvetica', 'B', 9)
+        pdf.cell(45, 5, 'ID ESTUDIANTE', border=0, align='C')
+        
+        x_cols_id = [inicio_id_x + 6, inicio_id_x + 16, inicio_id_x + 26, inicio_id_x + 36]
+        y_inicio_burbujas_id = inicio_y_cajas + 15
+        
+        # Imprimir los dígitos del ID en la cabecera de las columnas
+        pdf.set_font('helvetica', 'B', 10)
+        for idx, x_col in enumerate(x_cols_id):
+            pdf.set_xy(x_col, y_inicio_burbujas_id - 6)
+            # Imprime el número del ID que le corresponde a esa columna
+            pdf.cell(diametro, diametro, id_est[idx], align='C')
+
+        pdf.set_font('helvetica', '', 8)
+        
+        # Dibujar Matriz y Rellenar la burbuja correcta
+        for fila in range(10):
+            y_burbuja = y_inicio_burbujas_id + (fila * 7.5) 
+            for col_idx, x_col in enumerate(x_cols_id):
+                pdf.set_xy(x_col, y_burbuja)
+                
+                # LOGICA DE AUTORELLENADO: Si la fila coincide con el dígito del ID, se pinta de negro
+                if str(fila) == id_est[col_idx]:
+                    pdf.set_fill_color(0, 0, 0) # Fondo negro
+                    pdf.set_text_color(255, 255, 255) # Texto blanco
+                    pdf.ellipse(x_col, y_burbuja, diametro, diametro, 'DF')
+                    pdf.cell(diametro, diametro, str(fila), align='C')
+                else:
+                    pdf.set_fill_color(255, 255, 255) # Fondo blanco
+                    pdf.set_text_color(0, 0, 0) # Texto negro
+                    pdf.ellipse(x_col, y_burbuja, diametro, diametro, 'D')
+                    pdf.cell(diametro, diametro, str(fila), align='C')
+        
+        # Restaurar colores a negro puro para el resto del documento
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_fill_color(255, 255, 255)
+
+        # ==========================================
+        # 4. ZONA: RESPUESTAS (EN BLANCO)
+        # ==========================================
+        inicio_resp_x = 80
+        
+        pdf.set_draw_color(180, 180, 180)
+        pdf.set_line_width(0.5)
+        pdf.rect(inicio_resp_x - 5, inicio_y_cajas, 120, alto_cajas, 'D') 
+        
+        pdf.set_draw_color(0, 0, 0)
+        pdf.set_line_width(0.2)
+        
+        pdf.set_xy(inicio_resp_x, inicio_y_cajas + 2)
+        pdf.set_font('helvetica', 'B', 9)
+        pdf.cell(110, 5, 'ZONA DE RESPUESTAS', border=0, align='C')
+        
+        opciones = ['A', 'B', 'C', 'D', 'E']
+        y_inicio_burbujas_resp = inicio_y_cajas + 15
+        espacio_entre_opciones = 7
+        
+        for i in range(1, num_preguntas + 1):
+            columna_actual = 1 if i % 2 != 0 else 2
+            fila_actual = math.ceil(i / 2) - 1
+            
+            x_pregunta = inicio_resp_x + 5 if columna_actual == 1 else inicio_resp_x + 60
+            y_pregunta = y_inicio_burbujas_resp + (fila_actual * 7.5) 
+            
+            pdf.set_xy(x_pregunta, y_pregunta)
+            pdf.set_font('helvetica', 'B', 8)
+            pdf.cell(8, diametro, f'P{i:02d}', align='R')
+            
+            pdf.set_font('helvetica', '', 7)
+            for idx_opc, letra in enumerate(opciones):
+                x_burbuja = x_pregunta + 10 + (idx_opc * espacio_entre_opciones)
+                pdf.ellipse(x_burbuja, y_pregunta, diametro, diametro, 'D')
+                pdf.set_xy(x_burbuja, y_pregunta)
+                pdf.cell(diametro, diametro, letra, align='C')
 
     return pdf.output()
 # =================================================================
