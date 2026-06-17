@@ -1,19 +1,18 @@
 import streamlit as st
 import pandas as pd
-import re
 from supabase import create_client
-from estilos_globales import inyectar_estilos_omega 
+from estilos_globales import inyectar_estilos_omega
 
 # =====================================================================
 # 🔐 CONEXIÓN AL BÚNKER DE DATOS INSTITUCIONAL
 # =====================================================================
 def iniciar_conexion():
     url = st.secrets["SUPABASE_URL"].strip()
-    key = st.secrets["SUPABASE_KEY"].strip()
+    key = st.secrets["SUPABASE_KEY_REAL"].strip() if "SUPABASE_KEY_REAL" in st.secrets else st.secrets["SUPABASE_KEY"].strip()
     return create_client(url, key)
 
 # =====================================================================
-# ⚡ FUNCIÓN PRINCIPAL DEL MÓDULO
+# ⚡ FUNCIÓN PRINCIPAL DEL MÓDULO (EVALUACIÓN ESTUDIANTIL)
 # =====================================================================
 def ejecutar():
     # 1. Inyección visual unificada
@@ -31,60 +30,72 @@ def ejecutar():
     supabase = iniciar_conexion()
     
     # =====================================================================
-    # 📄 TAB 1: LISTADOS POR CURSO
+    # 📄 TAB 1: LISTADOS POR CURSO (EXTRACCIÓN MASIVA BLINDADA)
     # =====================================================================
     with tab_listados:
-        # Extracción de datos con indicador de carga
-        with st.spinner("Sincronizando con el búnker de datos..."):
+        estudiantes_base = []
+        offset, chunk_size = 0, 1000
+        
+        # Extracción de datos con indicador de carga y paginación en bucle
+        with st.spinner("Desplegando conexión y extrayendo registro maestro..."):
             try:
-                # 🔥 CORRECCIÓN CRÍTICA: Se usan las mayúsculas exactas "Nombre_Completo, Grado"
-                respuesta = supabase.table("data_estudiantes").select("Nombre_Completo, Grado").limit(15000).execute()
-                listado_crudo = respuesta.data
+                while True:
+                    resultado = supabase.table("data_estudiantes").select('*').range(offset, offset + chunk_size - 1).execute()
+                    if not resultado.data: 
+                        break
+                    estudiantes_base.extend(resultado.data)
+                    if len(resultado.data) < chunk_size: 
+                        break
+                    offset += chunk_size
             except Exception as e:
-                st.error(f"🚨 Enlace de comunicaciones roto con el búnker de Supabase: {e}")
-                listado_crudo = []
+                st.error(f"🚨 Falla en la extracción masiva del búnker: {e}")
 
-        if listado_crudo:
-            st.markdown("🟢 **Sincronizado**")
-            df_est = pd.DataFrame(listado_crudo)
+        if estudiantes_base:
+            st.markdown("🟢 **Sincronización Total Completada**")
             
-            # Estandarizamos los nombres de las columnas a minúsculas en el DataFrame de Pandas
-            # para que el resto del script funcione sin importar cómo responda Supabase
-            df_est.columns = [str(c).lower().strip() for c in df_est.columns]
+            # --- PROCESAMIENTO E HIGIENIZACIÓN ---
+            df = pd.DataFrame(estudiantes_base)
             
-            # --- LIMPIEZA NUCLEAR ---
-            def aplanar_grado(g):
-                if pd.isna(g): return "SIN GRADO"
-                match = re.search(r'(\d+)', str(g))
-                return match.group(1) + "°" if match else str(g).upper().strip()
-                
-            df_est['grado'] = df_est['grado'].apply(aplanar_grado)
-            df_est['nombre_completo'] = df_est['nombre_completo'].astype(str).str.upper().str.strip()
+            # Guardamos la estructura original para operaciones de guardado (Tabs 2 y 3)
+            columnas_originales = list(df.columns)
             
-            # --- ELIMINACIÓN DE DUPLICADOS (LA MAGIA DE LOS 750 ALUMNOS) ---
-            df_unicos = df_est.drop_duplicates(subset=['nombre_completo', 'grado']).reset_index(drop=True)
+            # Estandarizamos a minúsculas internamente para evitar cruce de mayúsculas
+            df.columns = [c.lower() for c in df.columns]
             
-            # Ordenamos los grados disponibles de forma lógica
-            grados_disponibles = sorted([g for g in df_unicos['grado'].unique() if g != "SIN GRADO"])
+            # Identificación dinámica de columnas vitales
+            col_id = "id_estudiante" if "id_estudiante" in df.columns else df.columns[0]
+            col_nombre = "nombre_completo" if "nombre_completo" in df.columns else df.columns[1]
+            col_grado = "grado" if "grado" in df.columns else ("grupo" if "grupo" in df.columns else df.columns[2])
+            
+            df[col_id] = df[col_id].astype(str).str.strip()
+            df[col_nombre] = df[col_nombre].astype(str).str.upper().str.strip()
+            df[col_grado] = df[col_grado].astype(str).str.upper().str.strip()
+            
+            # --- ELIMINACIÓN DE DUPLICADOS (FILTRO ANTI-CLONES POR ID) ---
+            df_unicos = df.drop_duplicates(subset=[col_id]).reset_index(drop=True)
             
             # --- INTERFAZ DEL SELECTOR ---
+            grados_disponibles = sorted([g for g in df_unicos[col_grado].unique() if g not in ["NAN", "NONE", ""]])
+            
             if grados_disponibles:
-                grado_seleccionado = st.selectbox("Seleccione el Grado a auditar:", grados_disponibles, key="sb_grados_eval")
+                col_filtro, col_vacia = st.columns([1, 1])
+                with col_filtro:
+                    grado_seleccionado = st.selectbox("🎯 Seleccione el Grado a auditar:", grados_disponibles, key="sb_grados_eval")
                 
                 if grado_seleccionado:
-                    # Filtramos los alumnos que pertenecen únicamente al grado seleccionado
-                    df_filtrado = df_unicos[df_unicos['grado'] == grado_seleccionado].sort_values(by="nombre_completo").reset_index(drop=True)
+                    # Filtramos los alumnos del grado exacto seleccionado
+                    df_filtrado = df_unicos[df_unicos[col_grado] == grado_seleccionado].sort_values(by=col_nombre).reset_index(drop=True)
                     
-                    # Ajustamos el índice para que la tabla empiece en 1 visualmente
-                    df_filtrado.index += 1
-                    
-                    # Mostramos el consolidado final de tus 750 alumnos reales
+                    # Mostramos el consolidado final
                     st.markdown(f"📊 **Listado Oficial de {grado_seleccionado} — ({len(df_filtrado)} Alumnos):**")
                     
-                    st.dataframe(
-                        df_filtrado[['nombre_completo']].rename(columns={'nombre_completo': 'Nombre Completo'}),
-                        use_container_width=True
-                    )
+                    # Preparamos la tabla visual
+                    df_visual = df_filtrado[[col_nombre]].copy()
+                    df_visual.rename(columns={col_nombre: 'Nombre Completo'}, inplace=True)
+                    
+                    # Despliegue blindado sin el índice lateral
+                    with st.container(border=True):
+                        st.dataframe(df_visual, use_container_width=True, hide_index=True)
             else:
                 st.warning("No se encontraron grados válidos en la base de datos.")
         else:
@@ -98,9 +109,8 @@ def ejecutar():
         with st.form("form_alta_individual_eval", clear_on_submit=True):
             nuevo_nombre = st.text_input("👤 NOMBRE COMPLETO DEL ESTUDIANTE:").strip().upper()
             
-            # Reutilizamos los grados de la consulta anterior para el menú desplegable
             try:
-                grados_drop = sorted([g for g in df_unicos['grado'].unique().tolist() if g != "SIN GRADO"])
+                grados_drop = sorted([g for g in df_unicos[col_grado].unique().tolist() if g not in ["NAN", "NONE", ""]])
             except NameError:
                 grados_drop = ["1°", "2°", "3°", "4°", "5°", "6°", "7°", "8°", "9°", "10°", "11°"]
                 
@@ -112,7 +122,7 @@ def ejecutar():
             
             grado_nuevo_txt = ""
             if grado_sel == "[+ CREAR NUEVO GRADO...]":
-                grado_nuevo_txt = st.text_input("✍️ Escriba el nombre del nuevo Grado:").strip().upper()
+                grado_nuevo_txt = st.text_input("✍️ Escriba el nombre del nuevo Grado/Grupo:").strip().upper()
                 
             boton_matricular = st.form_submit_button("🚀 EFECTUAR MATRÍCULA DE ESTUDIANTE", use_container_width=True)
 
@@ -122,8 +132,11 @@ def ejecutar():
                 st.error("❌ Operación abortada: Los campos son obligatorios.")
             else:
                 try:
-                    # Mapeo usando las mayúsculas exactas requeridas por Supabase
-                    payload_estudiante = {"Nombre_Completo": nuevo_nombre, "Grado": grado_final} 
+                    # Detectamos el nombre original de las columnas en Supabase para insertar sin errores
+                    db_col_nombre = next((c for c in columnas_originales if c.lower() == "nombre_completo"), "Nombre_Completo")
+                    db_col_grado = next((c for c in columnas_originales if c.lower() in ["grado", "grupo"]), "Grupo")
+                    
+                    payload_estudiante = {db_col_nombre: nuevo_nombre, db_col_grado: grado_final} 
                     supabase.table("data_estudiantes").insert(payload_estudiante).execute()
                     st.success(f"🎯 ¡MATRÍCULA EXITOSA! '{nuevo_nombre}' asignado a '{grado_final}'.")
                     st.rerun()
@@ -135,21 +148,24 @@ def ejecutar():
     # =====================================================================
     with tab_masiva:
         st.markdown("#### 📥 Inyector de Listas Completas de Excel")
-        datos_pegados = st.text_area("📋 PEGUE AQUÍ LAS COLUMNAS DE EXCEL (Nombre | Grado):", height=200, key="ta_masiva_eval")
+        datos_pegados = st.text_area("📋 PEGUE AQUÍ LAS COLUMNAS DE EXCEL (Nombre | Grado/Grupo):", height=200, key="ta_masiva_eval")
         boton_carga_masiva = st.button("⚡ INICIAR INYECCIÓN MASIVA", use_container_width=True, type="primary", key="btn_masiva_eval")
         
         if boton_carga_masiva and datos_pegados.strip():
             try:
                 linhas = datos_pegados.strip().split("\n")
                 registros_bulk = []
+                
+                db_col_nombre = next((c for c in columnas_originales if c.lower() == "nombre_completo"), "Nombre_Completo")
+                db_col_grado = next((c for c in columnas_originales if c.lower() in ["grado", "grupo"]), "Grupo")
+
                 for l in linhas:
                     partes = l.split("\t") if "\t" in l else l.split(",")
                     if len(partes) >= 2:
                         nom = str(partes[0]).strip().upper()
                         gra = str(partes[1]).strip().upper()
                         if nom and gra:
-                            # Mapeo usando las mayúsculas exactas para la inserción masiva
-                            registros_bulk.append({"Nombre_Completo": nom, "Grado": gra})
+                            registros_bulk.append({db_col_nombre: nom, db_col_grado: gra})
                 
                 if registros_bulk:
                     with st.spinner("Inyectando registros en el búnker..."):
