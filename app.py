@@ -101,10 +101,16 @@ if not st.session_state.autenticado:
     col1, col2, col3 = st.columns([1.1, 1.2, 1.1])
     
     with col2:
-        # Despliegue del Escudo B en el centro del Login
+        # Despliegue del Escudo B en el centro del Login con TRAMPA ANTIFALLOS
         if os.path.exists(ruta_logo):
-            st.image(ruta_logo, use_container_width=True)
-            
+            try:
+                # Intenta cargar la imagen
+                st.image(ruta_logo, use_container_width=True)
+            except Exception as e:
+                # 🪤 LA TRAMPA: Si la imagen está corrupta, atrapa el error y no colapsa la app
+                st.error("🚨 ALERTA ROJA: El archivo 'logo.png' en GitHub está corrupto, vacío o no es una imagen válida.")
+                st.markdown("<h1 style='text-align: center; color: #D97706; font-size: 5rem;'>🛡️</h1>", unsafe_allow_html=True)
+                
         st.markdown("<h2 style='text-align: center; color: #0d1b2a; margin-top: 10px; font-weight: bold;'>GÉNESIS CONTROL TOTAL</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #555; font-size: 1rem; margin-top: -10px;'>AUTENTICACIÓN DE MANDO INSTITUTIONAL</p>", unsafe_allow_html=True)
         
