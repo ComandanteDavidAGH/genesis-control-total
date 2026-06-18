@@ -52,14 +52,24 @@ st.markdown("""
     /* 🚀 NUEVOS AJUSTES TÁCTICOS 🚀 */
     /* ========================================================= */
 
-    /* 🚫 1. ELIMINAR EL GATO DE GITHUB Y BOTONES DE DESPLIEGUE */
-    /* Esto oculta el bloque de "Share", "Star" y "GitHub" sin borrar los 3 puntos del menú */
-    .stAppDeployButton {
+    /* 🚫 1. ELIMINAR EL GATO DE GITHUB (MANIOBRA DE BLANQUEO TOTAL) */
+    /* Desactiva los botones nativos de despliegue */
+    .stDeployButton, .stAppDeployButton { 
+        display: none !important; 
+    }
+    
+    /* Vuelve invisibles los enlaces (el gato) y botones secundarios, EXCEPTO la hamburguesa */
+    header [data-testid="stHeaderActionElements"] a,
+    header [data-testid="stHeaderActionElements"] button:not([aria-label="Main menu"]) {
         display: none !important;
+        color: transparent !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
     }
 
     /* 🛑 2. ESTILO TÁCTICO PARA EL BOTÓN DE CERRAR SESIÓN (BOTÓN DE EYECCIÓN) */
-    /* Usamos .stButton > button para no alterar el ojo de la contraseña */
+    [data-testid="stSidebar"] .stButton > button {
+        background-color: #ef4444 !important; /* Color Rojo Alerta */
     [data-testid="stSidebar"] .stButton > button {
         background-color: #ef4444 !important; /* Color Rojo Alerta */
         border: 2px solid #b91c1c !important;
