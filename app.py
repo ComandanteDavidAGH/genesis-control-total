@@ -27,6 +27,7 @@ st.markdown("""
     [data-testid="stSidebar"] { 
         background-color: #0d1b2a; 
     }
+    
     /* Texto blanco estricto para la barra lateral */
     [data-testid="stSidebar"] p, 
     [data-testid="stSidebar"] h1, 
@@ -35,9 +36,44 @@ st.markdown("""
     [data-testid="stSidebar"] label { 
         color: #ffffff !important; 
     }
+    
+    /* 👁️ CONTROL ÓPTICO: Forzar que el botón del ojo de la contraseña sea visible y oscuro */
+    [data-testid="stSidebar"] input {
+        color: #0d1b2a !important;
+        background-color: #ffffff !important;
+        font-weight: bold !important;
+    }
+    [data-testid="stSidebar"] button svg {
+        fill: #0d1b2a !important;
+        color: #0d1b2a !important;
+    }
+
+    /* ========================================================= */
+    /* 🚀 NUEVOS AJUSTES TÁCTICOS 🚀 */
+    /* ========================================================= */
+
+    /* 🚫 1. ELIMINAR EL GATO DE GITHUB Y BOTONES DE DESPLIEGUE */
+    /* Esto oculta el bloque de "Share", "Star" y "GitHub" sin borrar los 3 puntos del menú */
+    .stAppDeployButton {
+        display: none !important;
+    }
+
+    /* 🛑 2. ESTILO TÁCTICO PARA EL BOTÓN DE CERRAR SESIÓN (BOTÓN DE EYECCIÓN) */
+    /* Usamos .stButton > button para no alterar el ojo de la contraseña */
+    [data-testid="stSidebar"] .stButton > button {
+        background-color: #ef4444 !important; /* Color Rojo Alerta */
+        border: 2px solid #b91c1c !important;
+        border-radius: 8px !important;
+    }
+    [data-testid="stSidebar"] .stButton > button p {
+        color: #ffffff !important; /* Texto blanco brillante */
+        font-weight: bold !important;
+    }
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background-color: #dc2626 !important; /* Rojo más oscuro al pasar el cursor */
+    }
     </style>
 """, unsafe_allow_html=True)
-
 
 # =================================================================
 # 🏛️ FASE 1: PANTALLA DE INICIO DE SESIÓN (LOGIN CENTRAL)
