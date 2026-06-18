@@ -49,23 +49,23 @@ st.markdown("""
     }
 
     /* ========================================================= */
-    /* 🚀 MÉTODO CLÁSICO RECUPERADO (AJUSTES TÁCTICOS) 🚀 */
+    /* 🚀 NUEVOS AJUSTES TÁCTICOS 🚀 */
     /* ========================================================= */
 
-    /* 🚫 1. ELIMINAR EXCLUSIVAMENTE EL GATO DE GITHUB Y EL BOTÓN DE FORK */
-    #GithubIcon {
-        visibility: hidden !important;
-    }
-    .viewerBadge_container__1QSob,
-    .styles_viewerBadge__1yB5_,
-    .viewerBadge_link__1S137,
-    .viewerBadge_text__1JaDK {
+    /* 🚫 1. ERRADICACIÓN TOTAL DEL GATO, ESTRELLA Y COMPARTIR */
+    /* Oculta el botón principal de 'Deploy' si lo hay */
+    .stAppDeployButton {
         display: none !important;
     }
     
-    /* Por si acaso la versión usa el botón de despliegue genérico */
-    .stDeployButton { 
-        display: none !important; 
+    /* Oculta todos los enlaces (Share, GitHub) de la barra superior */
+    [data-testid="stHeaderActionElements"] a {
+        display: none !important;
+    }
+    
+    /* Oculta todos los botones (Estrella, Lápiz) EXCEPTO la Hamburguesa (tres puntos) */
+    [data-testid="stHeaderActionElements"] button:not([aria-label="Main menu"]) {
+        display: none !important;
     }
 
     /* 🛑 2. ESTILO TÁCTICO PARA EL BOTÓN DE CERRAR SESIÓN (BOTÓN DE EYECCIÓN) */
