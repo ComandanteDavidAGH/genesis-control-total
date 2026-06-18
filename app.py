@@ -52,19 +52,23 @@ st.markdown("""
     /* 🚀 NUEVOS AJUSTES TÁCTICOS 🚀 */
     /* ========================================================= */
 
-    /* 🚫 1. ERRADICACIÓN TOTAL DEL GATO, ESTRELLA Y COMPARTIR */
-    /* Oculta el botón principal de 'Deploy' si lo hay */
-    .stAppDeployButton {
+    /* 🚫 1. ERRADICACIÓN DEFINITIVA DEL GATO Y BARRA CLOUD */
+    
+    /* Ataque 1: Destruye el contenedor del Viewer Badge sin importar los números aleatorios que Streamlit le ponga hoy */
+    [class^="viewerBadge_container"], 
+    [class*="viewerBadge"] {
         display: none !important;
     }
-    
-    /* Oculta todos los enlaces (Share, GitHub) de la barra superior */
-    [data-testid="stHeaderActionElements"] a {
+
+    /* Ataque 2: Limpia la nueva barra de herramientas (stToolbar) borrando enlaces (GitHub) y botones (Share, Star) */
+    [data-testid="stToolbar"] a, 
+    [data-testid="stToolbar"] button:not([aria-label="Main menu"]):not([title="Main menu"]) {
         display: none !important;
     }
-    
-    /* Oculta todos los botones (Estrella, Lápiz) EXCEPTO la Hamburguesa (tres puntos) */
-    [data-testid="stHeaderActionElements"] button:not([aria-label="Main menu"]) {
+
+    /* Ataque 3: Oculta los botones nativos de despliegue ("Manage app") */
+    .stAppDeployButton,
+    [data-testid="manage-app-button"] {
         display: none !important;
     }
 
