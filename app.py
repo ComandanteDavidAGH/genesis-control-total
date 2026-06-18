@@ -2,7 +2,7 @@ import streamlit as st
 import os
 
 # ⚙️ REGLA DE ORO: La configuración de página DEBE SER siempre la primera orden
-st.set_page_config(page_title="GÉNESIS v2.5", layout="wide", page_icon="⚙️")
+st.set_page_config(page_title="GÉNESIS v4.0", layout="wide", page_icon="🛡️")
 
 # 🎨 INYECCIÓN VISUAL QUIRÚRGICA PARA LA BARRA LATERAL
 st.markdown("""
@@ -41,11 +41,15 @@ st.markdown("""
 # =================================================================
 CLAVE_MAESTRA = st.secrets["ADMIN_PIN"] if "ADMIN_PIN" in st.secrets else "GENESIS2026"
 
-# Menú Lateral Institucional con Control de Acceso Perimetral
+# Definición de la ruta absoluta del Emblema Oficial
+base_dir = os.path.dirname(__file__)
+ruta_logo = os.path.join(base_dir, "assets", "logo.png")
+
+# =================================================================
+# 🛡️ DESPLIEGUE EN EL MENÚ LATERAL (SIDEBAR)
+# =================================================================
 with st.sidebar:
-    base_dir = os.path.dirname(__file__)
-    ruta_logo = os.path.join(base_dir, "assets", "logo.png")
-    
+    # 1. Cargamos el escudo en la parte superior del menú lateral
     if os.path.exists(ruta_logo):
         try:
             st.image(ruta_logo, use_container_width=True)
@@ -55,7 +59,7 @@ with st.sidebar:
     st.title("🛡️ Sistema GÉNESIS")
     st.markdown("---")
     
-    # Casilla de contraseña enmascarada (Streamlit le añade el ojo automáticamente)
+    # Casilla de contraseña enmascarada
     pin_ingresado = st.text_input("🔑 LLAVE DE MANDO (DOCENTE):", type="password", help="Ingrese la contraseña para liberar las herramientas administrativas.")
     st.markdown("---")
     
@@ -75,7 +79,24 @@ with st.sidebar:
         st.info("📱 MODO ESTUDIANTE ACTIVO")
         seleccion = "1. Portal de Evaluación Estudiantil"
 
+# =================================================================
+# 🏛️ PANTALLA DE INICIO (BIENVENIDA / LOGIN PRINCIPAL)
+# =================================================================
+# Si el usuario no ha ingresado la clave, mostramos el escudo gigante en el centro
+if pin_ingresado != CLAVE_MAESTRA:
+    st.markdown("<br><br>", unsafe_allow_html=True) # Espaciado superior
+    col1, col2, col3 = st.columns([1, 1.5, 1]) 
+    with col2:
+        if os.path.exists(ruta_logo):
+            st.image(ruta_logo, use_container_width=True)
+    
+    st.markdown("<h2 style='text-align: center; color: #0d1b2a; margin-top: 15px;'>SISTEMA GÉNESIS CONTROL TOTAL</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-size: 1.1rem; color: #555;'>Ingrese la <b>Llave de Mando</b> en el menú lateral para inicializar los módulos tácticos.</p>", unsafe_allow_html=True)
+    st.markdown("---")
+
+# =================================================================
 # 🧭 ENRUTADOR INTELIGENTE DEL BÚNKER (Doble pared de verificación)
+# =================================================================
 if seleccion == "0. Gestión de Estudiantes" and pin_ingresado == CLAVE_MAESTRA:
     from modulos import m0_gestion
     m0_gestion.ejecutar()
@@ -98,5 +119,4 @@ elif seleccion == "4. Escáner OMR" and pin_ingresado == CLAVE_MAESTRA:
 
 elif seleccion == "5. Dashboard Analítico" and pin_ingresado == CLAVE_MAESTRA:
     from modulos import m4_dashboard
-    m4_dashboard.ejecutar()  
-    # Puesta a Punto Final Ecosistema 2026
+    m4_dashboard.ejecutar()
