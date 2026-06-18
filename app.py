@@ -49,27 +49,26 @@ st.markdown("""
     }
 
     /* ========================================================= */
-    /* 🚀 NUEVOS AJUSTES TÁCTICOS 🚀 */
+    /* 🚀 MÉTODO CLÁSICO RECUPERADO (AJUSTES TÁCTICOS) 🚀 */
     /* ========================================================= */
 
-    /* 🚫 1. ELIMINAR EL GATO DE GITHUB (MANIOBRA DE BLANQUEO TOTAL) */
-    /* Desactiva los botones nativos de despliegue */
-    .stDeployButton, .stAppDeployButton { 
-        display: none !important; 
+    /* 🚫 1. ELIMINAR EXCLUSIVAMENTE EL GATO DE GITHUB Y EL BOTÓN DE FORK */
+    #GithubIcon {
+        visibility: hidden !important;
+    }
+    .viewerBadge_container__1QSob,
+    .styles_viewerBadge__1yB5_,
+    .viewerBadge_link__1S137,
+    .viewerBadge_text__1JaDK {
+        display: none !important;
     }
     
-    /* Vuelve invisibles los enlaces (el gato) y botones secundarios, EXCEPTO la hamburguesa */
-    header [data-testid="stHeaderActionElements"] a,
-    header [data-testid="stHeaderActionElements"] button:not([aria-label="Main menu"]) {
-        display: none !important;
-        color: transparent !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
+    /* Por si acaso la versión usa el botón de despliegue genérico */
+    .stDeployButton { 
+        display: none !important; 
     }
 
     /* 🛑 2. ESTILO TÁCTICO PARA EL BOTÓN DE CERRAR SESIÓN (BOTÓN DE EYECCIÓN) */
-    [data-testid="stSidebar"] .stButton > button {
-        background-color: #ef4444 !important; /* Color Rojo Alerta */
     [data-testid="stSidebar"] .stButton > button {
         background-color: #ef4444 !important; /* Color Rojo Alerta */
         border: 2px solid #b91c1c !important;
