@@ -22,6 +22,23 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     pdf.add_page()
     
     # ==========================================
+    # 🌟 MARCA DE AGUA DEL ESCUDO (15% OPACIDAD)
+    # ==========================================
+    # El escudo se dibuja DE PRIMERO para que todo lo demás quede impreso encima.
+    ruta_emblema = 'assets/logo.png' 
+    import os
+    if os.path.exists(ruta_emblema):
+        # Dimensiones para centrar un escudo de 80mm de ancho en una hoja A4 (210mm x 297mm)
+        ancho_escudo = 80
+        alto_escudo = 90  # Proporción aproximada del escudo B
+        x_centro = (210 - ancho_escudo) / 2
+        y_centro = (297 - alto_escudo) / 2
+        
+        # Bloque de precisión para opacidad en fpdf2
+        with pdf.local_context(fill_opacity=0.15):
+            pdf.image(ruta_emblema, x=x_centro, y=y_centro, w=ancho_escudo)
+            
+    # ==========================================
     # 1. MARCADORES FIDUCIARIOS (El ancla)
     # ==========================================
     tam_marcador = 8 
@@ -69,7 +86,7 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     diametro = radio * 2
 
     # ==========================================
-    # 3. ZONA: CÓDIGO DE ESTUDIANTE (4 Dígitos)
+    # 3. ZONA: CÓDIGO DE ESTUDIANTE (4 Dígitos con Casillas)
     # ==========================================
     inicio_id_x = 20
     
@@ -87,12 +104,17 @@ def generar_pdf_omr(titulo, materia, grado, num_preguntas):
     x_cols_id = [inicio_id_x + 6, inicio_id_x + 16, inicio_id_x + 26, inicio_id_x + 36]
     y_inicio_burbujas_id = inicio_y_cajas + 15
     
-    pdf.set_font('helvetica', '', 8)
-    
-    for idx, x_col in enumerate(x_cols_id):
-        pdf.set_xy(x_col, y_inicio_burbujas_id - 5)
-        pdf.cell(diametro, diametro, f'0{idx+1}', align='C')
+    # Dibujamos 4 cajas cuadradas para escribir los dígitos a mano
+    pdf.set_draw_color(0, 0, 0)
+    pdf.set_line_width(0.3)
+    for x_col in x_cols_id:
+        pdf.rect(x_col, y_inicio_burbujas_id - 7, diametro, diametro, 'D')
 
+    # Volvemos al grosor de línea estándar para las burbujas
+    pdf.set_line_width(0.2)
+    pdf.set_font('helvetica', '', 8)
+
+    # Generación de la matriz numérica (0-9)
     for fila in range(10):
         y_burbuja = y_inicio_burbujas_id + (fila * 7.5) 
         for x_col in x_cols_id:
