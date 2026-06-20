@@ -1,5 +1,9 @@
 import streamlit as st
 import os
+import requests  # 📡 NUEVA TRANSMISIÓN SATELITAL
+import base64    # 📡 NUEVA TRANSMISIÓN SATELITAL
+import io        # 📡 NUEVA TRANSMISIÓN SATELITAL
+from PIL import Image  # 📡 NUEVA TRANSMISIÓN SATELITAL
 
 # ⚙️ REGLA DE ORO: La configuración de página DEBE SER siempre la primera orden
 st.set_page_config(page_title="GÉNESIS v4.0", layout="wide", page_icon="🛡️")
@@ -9,6 +13,11 @@ st.set_page_config(page_title="GÉNESIS v4.0", layout="wide", page_icon="🛡️
 # =================================================================
 if "autenticado" not in st.session_state:
     st.session_state.autenticado = False
+# =================================================================
+# 📡 COORDENADAS DE LA ANTENA SATELITAL (GOOGLE APPS SCRIPT)
+# =================================================================
+# ⚠️ REEMPLAZA ESTA URL CON TU ENLACE REAL DE "GESTIONAR IMPLEMENTACIONES"
+URL_SATELITAL = "https://script.google.com/macros/s/AKfycbxUyeDr0sPDigSWmPXd2V5c4wFEl2NAfogImTJQMXmi9L8LzonVKWW3KXgHS9ZLjEm9/exec"
 
 # =================================================================
 # 🔒 CREDENCIALES DE ACCESO AUTORIZADO
@@ -182,6 +191,46 @@ else:
         m2_digitar.ejecutar()
 
     elif seleccion == "4. Escáner OMR":
+        st.markdown("## 📡 RECEPTOR SATELITAL GÉNESIS OMEGA PRO")
+        st.info("Utilice este panel para descargar las capturas tomadas en tiempo real por los drones móviles de los profesores.")
+        
+        # Botón táctico de consulta masiva a Drive
+        if st.button("🔄 REVISAR BUZÓN SATELITAL", type="primary"):
+            with st.spinner("Estableciendo enlace con la Bóveda Génesis_Examenes..."):
+                try:
+                    response = requests.get(URL_SATELITAL)
+                    data = response.json()
+                    
+                    if data.get("status") == "OK":
+                        examenes = data.get("examenes", [])
+                        
+                        if not examenes:
+                            st.info("📭 El hangar está limpio. No hay exámenes nuevos enviados desde el frente móvil.")
+                        else:
+                            st.success(f"📥 ¡Inteligencia recuperada! Se encontraron {len(examenes)} exámenes listos.")
+                            
+                            for exam in examenes:
+                                with st.container():
+                                    st.markdown(f"---")
+                                    st.markdown(f"### 📦 Archivo: `{exam['nombre']}`")
+                                    
+                                    # Decodificación y reconstrucción de la matriz óptica de la imagen
+                                    img_bytes = base64.b64decode(exam['base64'])
+                                    imagen_pil = Image.open(io.BytesIO(img_bytes))
+                                    
+                                    # Despliegue en la interfaz gráfica
+                                    st.image(imagen_pil, caption=f"Examen Capturado: {exam['nombre']}", use_container_width=True)
+                                    
+                                    # Enlace directo con OpenCV
+                                    if st.button(f"🔍 CALIFICAR CON MOTOR OPENCV", key=exam['id']):
+                                        st.warning("Activando Motor de Visión Artificial OpenCV para el reconocimiento de burbujas...")
+                                        # Aquí conectaremos la imagen con el algoritmo m3_escaner en la siguiente fase
+                                        
+                except Exception as e:
+                    st.error(f"🚨 Falla en el enlace de telemetría: {e}")
+        
+        st.markdown("<br><hr><br>", unsafe_allow_html=True)
+        st.subheader("⚙️ Entrada Manual / Escáner Local")
         from modulos import m3_escaner
         m3_escaner.ejecutar()
 
