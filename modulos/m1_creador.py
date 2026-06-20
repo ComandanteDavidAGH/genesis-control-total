@@ -208,18 +208,48 @@ def ejecutar():
     # 🏛️ PASO 1: CONSOLA CENTRAL DE CONFIGURACIÓN
     # =================================================================
     st.markdown("### ⚙️ PASO 1: Configuración de la Evaluación")
+    
+    lista_docentes = ["DR. DAVID AGH", "ING. ALEJANDRO M.", "DRA. ELENA R."]
+
     with st.container(border=True):
+        # FILA 0: IDENTIFICACIÓN DE MANDO
+        r0_c1, r0_c2 = st.columns(2)
+        with r0_c1: docente_responsable = st.selectbox("👨‍🏫 DOCENTE RESPONSABLE (TRAZABILIDAD):", lista_docentes)
+        with r0_c2: periodo_academico = st.selectbox("📂 PERIODO ACADÉMICO:", ["PRIMER PERIODO", "SEGUNDO PERIODO", "TERCER PERIODO", "CUARTO PERIODO"])
+
+        # FILA 1: COORDENADAS DE LA EVALUACIÓN
         r1_c1, r1_c2 = st.columns(2)
         with r1_c1: nombre_evaluacion = st.text_input("🎯 NOMBRE DE LA EVALUACIÓN:", placeholder="Ej: Lectura Crítica Segundo Periodo").strip().upper()
         with r1_c2: grado_objetivo = st.selectbox("👥 CURSO / GRADO OBJETIVO:", lista_grados)
 
+        # FILA 2: PARÁMETROS ACADÉMICOS
         r2_c1, r2_c2 = st.columns(2)
         with r2_c1: asignatura = st.selectbox("🎨 ASIGNATURA / MATERIA:", lista_materias)
-        with r2_c2: nota_maxima = st.number_input("💯 NOTA MÁXIMA:", min_value=1.0, max_value=10.0, value=5.0, step=0.1)
+        with r2_c2: tipo_evaluacion = st.selectbox("📝 TIPO DE EVALUACIÓN:", ["QUIZ", "TALLER", "EXPOSICIÓN", "EVALUACIÓN FINAL PERIODO"])
 
+        # FILA 3: CÁLCULO DE LÍMITES ÓPTICOS Y COMPENSACIÓN AUTOMÁTICA
         r3_c1, r3_c2 = st.columns(2)
-        with r3_c1: tipo_evaluacion = st.selectbox("📝 TIPO:", ["QUIZ", "TALLER", "EXPOSICIÓN", "EVALUACIÓN FINAL PERIODO"])
-        with r3_c2: periodo_academico = st.selectbox("📂 PERIODO:", ["PRIMER PERIODO", "SEGUNDO PERIODO", "TERCER PERIODO", "CUARTO PERIODO"])
+        with r3_c1: nota_maxima = st.number_input("💯 NOTA MÁXIMA:", min_value=1.0, max_value=10.0, value=5.0, step=0.1)
+        with r3_c2:
+            try:
+                nombre_filtro_periodo = f"({periodo_academico})"
+                res_pesos = supabase.table("pruebas_maestras").select("peso").eq("materia", asignatura).eq("grado", grado_objetivo).like("nombre", f"%{nombre_filtro_periodo}%").execute()
+                pesos_existentes = [float(p.get('peso', 0)) for p in res_pesos.data] if res_pesos.data else []
+                porcentaje_usado = sum(pesos_existentes) * 100
+            except Exception:
+                porcentaje_usado = 0.0
+
+            porcentaje_disponible = max(0.0, 100.0 - porcentaje_usado)
+
+            if tipo_evaluacion == "EVALUACIÓN FINAL PERIODO":
+                peso_porcentaje = porcentaje_disponible
+                st.markdown(f"<div style='background-color:#0d1b2a; padding:8px; border-radius:5px; border-left:4px solid #00ff66; color:white; font-weight:bold; margin-top:25px;'>⚖️ PESO AUTOMÁTICO ABSORBIDO: {peso_porcentaje:.0f}%</div>", unsafe_allow_html=True)
+            else:
+                valor_sugerido = min(20.0, porcentaje_disponible)
+                peso_porcentaje = st.number_input(f"⚖️ PESO DE VALORACIÓN (Disponible: {porcentaje_disponible:.0f}%):", min_value=0.0, max_value=porcentaje_disponible, value=valor_sugerido, step=5.0)
+
+            if porcentaje_disponible <= 0:
+                st.error("🚨 Alerta: Este periodo ya completó el 100% de su peso académico.")
 # ⚖️ FILA 4: ENTRADA CRÍTICA DE PONDERACIÓN INSTITUIONAL
         r4_c1, r4_c2 = st.columns(2)
         with r4_c1:
@@ -271,7 +301,8 @@ def ejecutar():
                 "puntaje_maximo": nota_maxima, 
                 "total_preguntas": preguntas_activas,
                 "clave_respuestas": claves_seleccionadas,
-                "peso": peso_porcentaje / 100.0  # ⚖️ CONVERSIÓN DECIMAL MÁGICA (Ej: 20% -> 0.20)
+                "peso": peso_porcentaje / 100.0,  # Guardamos como decimal (Ej: 0.20)
+                "docente": docente_responsable     # Guardamos el nombre del maestro
             }
             try:
                 supabase.table("pruebas_maestras").insert(payload).execute()
