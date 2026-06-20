@@ -169,6 +169,13 @@ def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro (Prioridad Alta)
     inyectar_estilos_omega()
     
+    # 🔑 ENLAVE DE CONEXIÓN CON EL BÚNKER (La pieza que faltaba)
+    try:
+        supabase = iniciar_conexion()
+    except Exception:
+        st.error("🚨 Falla en el enlace satelital con el búnker de Supabase.")
+        return
+    
     # 📥 BARRIDO TÁCTICO EN SEGUNDO PLANO (CONEXIÓN DIRECTA A HORARIOS)
     with st.spinner("Sincronizando catálogo oficial..."):
         try:
@@ -195,7 +202,7 @@ def ejecutar():
     lista_materias = sorted(pd.DataFrame(materias_raw)["ASIGNATURA"].dropna().unique().tolist()) if materias_raw else ["MATEMÁTICAS", "CIENCIAS", "LENGUAJE"]
     lista_grados = sorted(pd.DataFrame(estudiantes_base)["Grado"].dropna().unique().tolist()) if estudiantes_base else ["SEXTO A", "SÉPTIMO A"]
     
-    # 🧠 EL FILTRO "EXCEL ÚNICOS" (Aquí se crean los nombres reales de la BD)
+    # 🧠 EL FILTRO "EXCEL ÚNICOS"
     if docentes_raw:
         df_docentes = pd.DataFrame(docentes_raw)
         lista_docentes = sorted(df_docentes["DOCENTE"].dropna().unique().tolist())
