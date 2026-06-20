@@ -221,10 +221,13 @@ else:
                                     # Despliegue en la interfaz gráfica
                                     st.image(imagen_pil, caption=f"Examen Capturado: {exam['nombre']}", use_container_width=True)
                                     
+                                    
                                     # Enlace directo con OpenCV
                                     if st.button(f"🔍 CALIFICAR CON MOTOR OPENCV", key=exam['id']):
-                                        st.warning("Activando Motor de Visión Artificial OpenCV para el reconocimiento de burbujas...")
-                                        # Aquí conectaremos la imagen con el algoritmo m3_escaner en la siguiente fase
+                                        st.session_state.imagen_satelital = base64.b64decode(exam['base64'])
+                                        st.session_state.nombre_imagen_satelital = exam['nombre']
+                                        st.success("🎯 Imagen bloqueada en la mira. ¡Procesando con OpenCV!")
+                                        st.rerun()
                                         
                 except Exception as e:
                     st.error(f"🚨 Falla en el enlace de telemetría: {e}")
