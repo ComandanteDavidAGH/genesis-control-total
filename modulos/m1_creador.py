@@ -186,11 +186,15 @@ def ejecutar():
         st.error("🚨 Falla en el enlace con el búnker de Supabase.")
         return
 
-    # 📥 BARRIDO TÁCTICO EN SEGUNDO PLANO
+    # 📥 BARRIDO TÁCTICO EN SEGUNDO PLANO (CONEXIÓN DIRECTA A HORARIOS)
     with st.spinner("Sincronizando catálogo oficial..."):
         try:
             res_consolidado = supabase.table("notas_consolidadas").select("ASIGNATURA").execute()
             materias_raw = res_consolidado.data if res_consolidado.data else []
+            
+            # 👨‍🏫 EXTRACCIÓN DIRECTA DESDE LA TABLA DE HORARIOS REAL
+            res_docentes = supabase.table("db_horarios").select("DOCENTE").execute()
+            docentes_raw = res_docentes.data if res_docentes.data else []
             
             estudiantes_base = []
             offset, chunk_size = 0, 1000
@@ -204,10 +208,16 @@ def ejecutar():
             st.error(f"🚨 Error de sincronización perimetral: {e}")
             return
 
-    # 🧮 Procesamiento de listas
+    # 🧮 Procesamiento de listas con Limpieza y Ordenamiento
     lista_materias = sorted(pd.DataFrame(materias_raw)["ASIGNATURA"].dropna().unique().tolist()) if materias_raw else ["MATEMÁTICAS", "CIENCIAS", "LENGUAJE"]
     lista_grados = sorted(pd.DataFrame(estudiantes_base)["Grado"].dropna().unique().tolist()) if estudiantes_base else ["SEXTO A", "SÉPTIMO A"]
-
+    
+    # 🧠 EL FILTRO "EXCEL ÚNICOS": Convierte la columna DOCENTE en una lista sin repeticiones y ordenada
+    if docentes_raw:
+        df_docentes = pd.DataFrame(docentes_raw)
+        lista_docentes = sorted(df_docentes["DOCENTE"].dropna().unique().tolist())
+    else:
+        lista_docentes = ["DR. DAVID AGH"]  # Respaldo táctico si la base de datos falla
     # =================================================================
     # 🏛️ PASO 1: CONSOLA CENTRAL DE CONFIGURACIÓN
     # =================================================================
