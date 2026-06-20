@@ -220,6 +220,20 @@ def ejecutar():
         r3_c1, r3_c2 = st.columns(2)
         with r3_c1: tipo_evaluacion = st.selectbox("📝 TIPO:", ["QUIZ", "TALLER", "EXPOSICIÓN", "EVALUACIÓN FINAL PERIODO"])
         with r3_c2: periodo_academico = st.selectbox("📂 PERIODO:", ["PRIMER PERIODO", "SEGUNDO PERIODO", "TERCER PERIODO", "CUARTO PERIODO"])
+# ⚖️ FILA 4: ENTRADA CRÍTICA DE PONDERACIÓN INSTITUIONAL
+        r4_c1, r4_c2 = st.columns(2)
+        with r4_c1:
+            peso_porcentaje = st.number_input(
+                "⚖️ PESO / PORCENTAJE DE VALORACIÓN (%):", 
+                min_value=5, 
+                max_value=100, 
+                value=20, 
+                step=5,
+                help="Defina cuánto vale esta nota dentro del periodo (Ej: 20 para 20%)"
+            )
+        with r4_c2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.caption(f"💡 Configuración activa: Esta prueba representará el **{peso_porcentaje}%** de la nota definitiva.")
 
     # =================================================================
     # 🔑 PASO 2: MATRIZ DE RESPUESTAS
@@ -256,7 +270,8 @@ def ejecutar():
                 "grado": grado_objetivo,
                 "puntaje_maximo": nota_maxima, 
                 "total_preguntas": preguntas_activas,
-                "clave_respuestas": claves_seleccionadas
+                "clave_respuestas": claves_seleccionadas,
+                "peso": peso_porcentaje / 100.0  # ⚖️ CONVERSIÓN DECIMAL MÁGICA (Ej: 20% -> 0.20)
             }
             try:
                 supabase.table("pruebas_maestras").insert(payload).execute()
