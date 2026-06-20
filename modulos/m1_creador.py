@@ -169,6 +169,10 @@ def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro (Prioridad Alta)
     inyectar_estilos_omega()
     
+    # 🪤 EL CEBO DE DETECCIÓN DE RADAR
+    st.error("🚨 CRÍTICO: SI ESTÁS VIENDO ESTE MENSAJE ROJO, EL CÓDIGO NUEVO SÍ SE ACTUALIZÓ EN LA NUBE.")
+    st.toast("📡 SEÑAL DE VIDA CAPTURADA V4.1", icon="🦅")
+    
     # ==========================================
     # 📊 ENCABEZADO PRINCIPAL DE ALTO IMPACTO
     # ==========================================
