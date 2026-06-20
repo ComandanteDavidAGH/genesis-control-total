@@ -169,23 +169,6 @@ def ejecutar():
     # ⚡ Inyección visual unificada Génesis Omega Pro (Prioridad Alta)
     inyectar_estilos_omega()
     
-    # 🪤 EL CEBO DE DETECCIÓN DE RADAR
-    st.error("🚨 CRÍTICO: SI ESTÁS VIENDO ESTE MENSAJE ROJO, EL CÓDIGO NUEVO SÍ SE ACTUALIZÓ EN LA NUBE.")
-    st.toast("📡 SEÑAL DE VIDA CAPTURADA V4.1", icon="🦅")
-    
-    # ==========================================
-    # 📊 ENCABEZADO PRINCIPAL DE ALTO IMPACTO
-    # ==========================================
-    st.markdown("<h1 style='text-align: center; color: #0F172A; font-size: 3rem;'>📝 Creador y Diseñador de Pruebas</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #D97706; font-weight: bold; letter-spacing: 1px;'>DISEÑO, ALMACENAMIENTO DE CLAVES Y GENERACIÓN DE MATRICES</p>", unsafe_allow_html=True)
-    st.markdown("---")
-
-    try:
-        supabase = iniciar_conexion()
-    except Exception:
-        st.error("🚨 Falla en el enlace con el búnker de Supabase.")
-        return
-
     # 📥 BARRIDO TÁCTICO EN SEGUNDO PLANO (CONEXIÓN DIRECTA A HORARIOS)
     with st.spinner("Sincronizando catálogo oficial..."):
         try:
@@ -212,18 +195,20 @@ def ejecutar():
     lista_materias = sorted(pd.DataFrame(materias_raw)["ASIGNATURA"].dropna().unique().tolist()) if materias_raw else ["MATEMÁTICAS", "CIENCIAS", "LENGUAJE"]
     lista_grados = sorted(pd.DataFrame(estudiantes_base)["Grado"].dropna().unique().tolist()) if estudiantes_base else ["SEXTO A", "SÉPTIMO A"]
     
-    # 🧠 EL FILTRO "EXCEL ÚNICOS": Convierte la columna DOCENTE en una lista sin repeticiones y ordenada
+    # 🧠 EL FILTRO "EXCEL ÚNICOS" (Aquí se crean los nombres reales de la BD)
     if docentes_raw:
         df_docentes = pd.DataFrame(docentes_raw)
         lista_docentes = sorted(df_docentes["DOCENTE"].dropna().unique().tolist())
     else:
-        lista_docentes = ["DR. DAVID AGH"]  # Respaldo táctico si la base de datos falla
+        lista_docentes = ["DR. DAVID AGH"]
+
     # =================================================================
     # 🏛️ PASO 1: CONSOLA CENTRAL DE CONFIGURACIÓN
     # =================================================================
     st.markdown("### ⚙️ PASO 1: Configuración de la Evaluación")
     
-    lista_docentes = ["DR. DAVID AGH", "ING. ALEJANDRO M.", "DRA. ELENA R."]
+    # ⚠️ REVISIÓN DE SEGURIDAD: Aquí NO debe existir la línea con los nombres antiguos.
+    # Si ves la línea: lista_docentes = ["DR. DAVID AGH", "ING. ALEJANDRO M.", "DRA. ELENA R."] ¡BÓRRALA!
 
     with st.container(border=True):
         # FILA 0: IDENTIFICACIÓN DE MANDO
