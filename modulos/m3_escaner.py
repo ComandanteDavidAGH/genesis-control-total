@@ -26,12 +26,11 @@ def buscar_campo(diccionario, nombre_campo, predeterminado=""):
     return predeterminado
 
 # =================================================================
-# 👁️ MOTOR CORE DE VISIÓN ARTIFICIAL (NUEVO)
+# 👁️ MOTOR CORE DE VISIÓN ARTIFICIAL
 # =================================================================
 def escanear_burbujas_opencv(imagen_bytes, llave_correcta):
     """
     Procesa la imagen, detecta burbujas marcadas y las compara con la llave maestra.
-    Requiere una imagen recortada de las opciones (A, B, C, D).
     """
     img = cv2.imdecode(imagen_bytes, cv2.IMREAD_COLOR)
     if img is None:
@@ -48,28 +47,23 @@ def escanear_burbujas_opencv(imagen_bytes, llave_correcta):
     for c in cnts:
         (x, y, w, h) = cv2.boundingRect(c)
         ar = w / float(h)
-        # Filtro geométrico: Debe ser casi un cuadrado (círculo) y tener un tamaño mínimo
         if w >= 15 and h >= 15 and 0.8 <= ar <= 1.2:
             burbujas.append(c)
 
-    # Si no detecta suficientes burbujas, falla la lectura autónoma
-    if len(burbujas) < len(llave_correcta) * 4: # Asumiendo 4 opciones (A,B,C,D) por pregunta
+    if len(burbujas) < len(llave_correcta) * 4: 
         return img, -1, None
 
-    # Ordenar burbujas de arriba a abajo (por preguntas)
     burbujas = sorted(burbujas, key=lambda b: cv2.boundingRect(b)[1])
     
     aciertos = 0
     opciones_letras = ['A', 'B', 'C', 'D']
     
-    # Agrupar en filas de 4 (A, B, C, D) y evaluar
     for (q, i) in enumerate(np.arange(0, len(llave_correcta) * 4, 4)):
-        fila_burbujas = sorted(burbujas[i:i + 4], key=lambda b: cv2.boundingRect(b)[0]) # Ordenar de izq a der
+        fila_burbujas = sorted(burbujas[i:i + 4], key=lambda b: cv2.boundingRect(b)[0])
         
         burbuja_marcada = None
         max_pixeles = 0
         
-        # Revisar cuál burbuja está más rellena
         for (j, b) in enumerate(fila_burbujas):
             mask = np.zeros(thresh.shape, dtype="uint8")
             cv2.drawContours(mask, [b], -1, 255, -1)
@@ -80,14 +74,11 @@ def escanear_burbujas_opencv(imagen_bytes, llave_correcta):
                 max_pixeles = total_pixeles
                 burbuja_marcada = j
         
-        # Comparar con la llave maestra
         respuesta_detectada = opciones_letras[burbuja_marcada]
         if respuesta_detectada == llave_correcta[q].strip().upper():
             aciertos += 1
-            # Dibujar contorno verde (Correcto)
             cv2.drawContours(img, [fila_burbujas[burbuja_marcada]], -1, (0, 255, 0), 3)
         else:
-            # Dibujar contorno rojo (Incorrecto)
             cv2.drawContours(img, [fila_burbujas[burbuja_marcada]], -1, (0, 0, 255), 3)
 
     return img, aciertos, burbujas
@@ -155,7 +146,6 @@ def ejecutar():
             puntaje_maximo = 5.0
             llave_maestra_lista = []
             
-            # COINCIDENCIA EXACTA DE MATERIA Y GRADO
             match_prueba = [p for p in pruebas if str(buscar_campo(p, 'materia')).strip().upper() == materia_seleccionada and str(buscar_campo(p, 'grado')).strip().upper() == grado_seleccionado]
             
             if match_prueba:
@@ -164,7 +154,6 @@ def ejecutar():
                 max_preguntas = int(buscar_campo(datos_prueba, 'total_preguntas', 10))
                 puntaje_maximo = float(buscar_campo(datos_prueba, 'puntaje_maximo', 5.0))
                 
-                # Extracción de la llave maestra sin comillas y separada por comas
                 llave_raw = str(buscar_campo(datos_prueba, 'llave_maestra', ''))
                 if llave_raw:
                     llave_maestra_lista = llave_raw.split(',')
@@ -186,22 +175,35 @@ def ejecutar():
     st.markdown("---")
     st.markdown("### 📷 PASO 2: Procesamiento Óptico (OMR)")
     
-    archivo_imagen = st.file_uploader("SUBA LA FOTOGRAFÍA DE LA TARJETA DE RESPUESTAS:", type=["png", "jpg", "jpeg"])
+    file_bytes = None
+    
+    # 📡 INTERCEPCIÓN TÁCTICA: ¿Venimos de la app móvil (Google Drive)?
+    if "imagen_satelital" in st.session_state and st.session_state.imagen_satelital is not None:
+        st.warning(f"📡 VISTA ACTIVA: Procesando examen satelital `{st.session_state.nombre_imagen_satelital}`")
+        # Convertimos los bytes guardados en memoria a array de numpy
+        file_bytes = np.frombuffer(st.session_state.imagen_satelital, dtype=np.uint8)
+        
+        if st.button("❌ Descargar imagen y regresar al escáner local"):
+            st.session_state.imagen_satelital = None
+            st.session_state.nombre_imagen_satelital = None
+            st.rerun()
+    else:
+        # Modo de contingencia tradicional (Carga manual)
+        archivo_imagen = st.file_uploader("SUBA LA FOTOGRAFÍA DE LA TARJETA DE RESPUESTAS:", type=["png", "jpg", "jpeg"])
+        if archivo_imagen is not None:
+            file_bytes = np.asarray(bytearray(archivo_imagen.read()), dtype=np.uint8)
 
     alumno_final = st.selectbox("👤 SELECCIONE EL ESTUDIANTE A CALIFICAR:", lista_alumnos_salón)
     aciertos_detectados = 0
     mostrar_controles_finales = False
 
-    if archivo_imagen is not None:
-        file_bytes = np.asarray(bytearray(archivo_imagen.read()), dtype=np.uint8)
-        
-        # Validar si tenemos una llave maestra válida para escanear
+    if file_bytes is not None:
         if llave_maestra_lista and len(llave_maestra_lista) == max_preguntas:
             try:
                 img_procesada, aciertos_auto, contornos = escanear_burbujas_opencv(file_bytes, llave_maestra_lista)
                 
                 if aciertos_auto != -1:
-                    st.image(img_procesada, caption="📸 Imagen Escaneada y Calificada por OpenCV", use_container_width=True, channels="BGR")
+                    st.image(img_procesada, caption="📸 Imagen Procesada y Calificada por OpenCV", use_container_width=True, channels="BGR")
                     st.success(f"🤖 ¡Escaneo exitoso! OpenCV detectó {aciertos_auto} respuestas correctas basado en la Llave Maestra.")
                     aciertos_detectados = aciertos_auto
                     mostrar_controles_finales = True
@@ -209,12 +211,15 @@ def ejecutar():
                     raise Exception("Geometría de burbujas no detectada.")
                     
             except Exception as e:
-                st.error("⚠️ La foto no tiene la claridad o el formato necesario para el reconocimiento automático. Por favor, digite los aciertos manualmente.")
+                st.error("⚠️ La foto no tiene la claridad necesaria para el reconocimiento automático. Digite los aciertos manualmente.")
                 aciertos_detectados = st.number_input("✍️ DIGITE LOS ACIERTOS REALES EVALUADOS VISUALMENTE:", min_value=0, max_value=int(max_preguntas), value=0)
                 mostrar_controles_finales = True
         else:
             st.warning("No hay una Llave Maestra válida para comparar. Ingrese la nota manualmente.")
-            st.image(archivo_imagen, caption="Imagen Subida")
+            if "imagen_satelital" in st.session_state and st.session_state.imagen_satelital is not None:
+                st.image(st.session_state.imagen_satelital)
+            else:
+                st.image(archivo_imagen, caption="Imagen Subida")
             aciertos_detectados = st.number_input("✍️ DIGITE LOS ACIERTOS:", min_value=0, max_value=int(max_preguntas), value=0)
             mostrar_controles_finales = True
 
@@ -258,7 +263,14 @@ def ejecutar():
             try:
                 supabase.table("respuestas_estudiantes").insert(payload_nota).execute()
                 st.success(f"🎉 ¡ÉXITO TOTAL! Nota inyectada para {alumno_final}.")
+                
+                # 📡 LIMPIEZA LOGÍSTICA: Vaciamos la memoria tras la subida exitosa 
+                if "imagen_satelital" in st.session_state:
+                    st.session_state.imagen_satelital = None
+                    st.session_state.nombre_imagen_satelital = None
+                
                 st.balloons()
+                st.rerun() # Recargamos para dejar el panel limpio para el siguiente examen
             except Exception as ex:
                 st.error(f"🚨 Falla transaccional: {ex}")
 
