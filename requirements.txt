@@ -7,3 +7,5 @@ plotly
 fpdf2
 openpyxl
 xlsxwriter
+requests
+Pillow
